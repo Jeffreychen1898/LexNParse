@@ -1,20 +1,3 @@
-"""
-lexer pipeline:
-    regex parser
-        regex -> tree
-    preprocessor
-        tree -> tree
-    NFA Generator
-        tree -> NFA
-    NFA to DFA
-        NFA -> DFA
-    minimal DFA
-        DFA -> minimal DFA
-
-lexer file
-    number : [0-9]+.?[0-9]+
-"""
-
 from lexer import Lexer
 
 def read_lex_file(filename):
