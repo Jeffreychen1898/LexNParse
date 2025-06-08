@@ -95,8 +95,6 @@ class StringSplit:
             elif t == SYMBOL_TYPE_MATCHES:
                 replaced_idx, matches_tagged = self.tag_matches(s, replaced_tk, replaced_idx)
                 split[i] = matches_tagged
-                print(s)
-                print(t)
 
         return replaced_idx
 

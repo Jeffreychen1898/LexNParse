@@ -170,13 +170,9 @@ class RegexSequence:
         self.accept = accept_label
 
     def generate_nfa(self):
-        print("begin nfa generation")
         self.nfa = NFA()
 
         last_node = self.parse_sequence_rule(0, self.sequence, toplevel=True)
-
-        print("displaying nfa")
-        self.nfa.display()
 
     def generate_dfa(self):
         self.nfa = self.nfa.gen_dfa()

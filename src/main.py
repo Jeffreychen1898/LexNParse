@@ -1,4 +1,5 @@
 from lexer import Lexer
+from parser import Parser
 
 def read_lex_file(filename):
     token_rules = []
@@ -14,7 +15,9 @@ def read_lex_file(filename):
     return token_rules
 
 def main():
-    token_rules = read_lex_file("./tests/basic_lex.txt")
+    token_rules = read_lex_file("./tests/test.txt")
     lex = Lexer(token_rules)
+    lex.construct_dfa()
+    #parser = Parser()
 
 main()

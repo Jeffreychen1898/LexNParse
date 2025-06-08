@@ -63,3 +63,6 @@ class InvalidParse(Exception):
 
 class InvalidDFA(Exception):
     pass
+
+class ApplicationError(Exception):
+    pass

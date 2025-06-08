@@ -25,7 +25,7 @@ class State:
         self.attributes = set()
 
     def get_attributes(self):
-        return self.attributes
+        return self.attributes.copy()
 
     def shift_state_indices(self, shift_amount):
         for i in range(len(self.transition_matrix)):
@@ -217,7 +217,6 @@ class NFA:
 
         while True:
             # fill out the table
-            print(partitions)
             for i, state in enumerate(self.states):
                 transition_matrix = state.get_transition_matrix()
                 for j, next_states in enumerate(transition_matrix):

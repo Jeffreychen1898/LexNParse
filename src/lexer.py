@@ -5,50 +5,79 @@ from regex_sequence import RegexSequence
 
 from nfa import NFA
 
-TOKEN_DEFN_REGEX = "[a-zA-Z_$]+"
+TOKEN_REGEX = ["[a-zA-Z0-9_$]*", " *: *", "\".*\""]
 
 class Lexer:
-    def __init__(self, tokens):
-        # split the string and tokenize
-        """splitter = StringSplit("(0\-9+)*.a+[^0\\-9a-zAZ]*f?|bb")
-        strs, types = splitter.run()
+    def __init__(self, lexer_tokens):
+        self.lexer_tokens = dict()
+        self.lexer_dfa = None
 
-        # rewrite extension rules
-        new_tks, new_tys = self.regex_rewriting(strs, types)
-        regex_sequence = RegexSequence(new_tks, new_tys)
-        regex_sequence.generate_dfa()
+        # generate nfa to parse the lexer file
+        regex_sequences = []
+        for i, tk_re in enumerate(TOKEN_REGEX):
+            split_str = StringSplit(tk_re)
+            tokens, types = split_str.run()
 
-        regex_sequence.nfa.display()"""
+            tokens, types = self.regex_rewriting(tokens, types)
+            regex_sequence = RegexSequence(tokens, types, str(i))
+            regex_sequence.generate_nfa()
 
-        splitter1 = StringSplit("(0\-9+)*.a+[^0\\-9a-zAZ]*f?")
-        strs1, types1 = splitter1.run()
+            regex_sequences.append(regex_sequence)
 
-        new_tks1, new_tys1 = self.regex_rewriting(strs1, types1)
-        regex_sequence1 = RegexSequence(new_tks1, new_tys1, "long_seq")
-        regex_sequence1.generate_nfa()
+        nfa = NFA(nfa_lst=[r.nfa for r in regex_sequences])
+        dfa = nfa.gen_dfa()
+        dfa = dfa.gen_minimal_dfa()
 
-        #regex_sequence1.nfa.display()
+        # parse the token rules
+        for tk in lexer_tokens:
+            token_seq = []
+            tk_val = ""
+            prev_accept = None
+            prev_idx = 0
+            curr_idx = 0
+            while curr_idx < len(tk):
+                try:
+                    dfa.step(tk[curr_idx])
+                except InvalidParse:
+                    if prev_accept is None:
+                        raise InvalidParse("Error on parsing token!")
+                    token_seq.append(prev_accept)
+                    curr_idx = prev_idx
+                    prev_accept = None
+                    tk_val = ""
+                    dfa.reset()
+                    curr_idx += 1
+                    continue
 
-        splitter2 = StringSplit("bb")
-        strs2, types2 = splitter2.run()
+                tk_val += tk[curr_idx]
+                state_attribs = dfa.get_state_attributes(dfa.get_current_state())
+                if len(state_attribs) > 1:
+                    raise ApplicationError("Ambiguity detected in token regexes!")
+                if state_attribs:
+                    prev_accept = (tk_val, state_attribs.pop())
+                    prev_idx = curr_idx
 
-        new_tks2, new_tys2 = self.regex_rewriting(strs2, types2)
-        regex_sequence2 = RegexSequence(new_tks2, new_tys2, "bb")
-        regex_sequence2.generate_nfa()
+                curr_idx += 1
 
-        #regex_sequence2.nfa.display()
 
-        final_nfa = NFA(nfa_lst=[regex_sequence1.nfa, regex_sequence2.nfa])
-        final_nfa = final_nfa.gen_dfa()
-        final_nfa = final_nfa.gen_minimal_dfa()
-        print("displaying final dfa")
-        final_nfa.display()
+            if prev_accept is None or prev_idx != len(tk) - 1:
+                raise InvalidParse("Error on parsing token!")
+            token_seq.append(prev_accept)
+            dfa.reset()
 
-        test_seq = "0-90-9paaa![]("
-        for c in test_seq:
-            final_nfa.step(c)
+            # ensure the tokens are in the right order
+            prev_tk = -1
+            for tk in token_seq:
+                if int(tk[1]) < prev_tk:
+                    raise InvalidParse("Invalid Syntax in lexer file!")
+                prev_tk = int(tk[1])
 
-        print(final_nfa.get_state_attributes(final_nfa.get_current_state()))
+            if token_seq[0] in self.lexer_tokens:
+                raise InvalidParse(f"Token {token_seq[0][0]} is already defined!")
+
+            self.lexer_tokens[token_seq[0][0]] = token_seq[2][0]
+
+        print(self.lexer_tokens)
 
     def regex_rewriting(self, tokens, types):
         rewritten_tokens = []
@@ -82,3 +111,21 @@ class Lexer:
             prev_ty = ty
 
         return (rewritten_tokens, rewritten_types)
+
+    def construct_dfa(self):
+        regex_sequences = []
+        for token_type, token_defn in self.lexer_tokens.items():
+            split_str = StringSplit(token_defn[1:-1])
+            tokens, types = split_str.run()
+
+            tokens, types = self.regex_rewriting(tokens, types)
+            regex_sequence = RegexSequence(tokens, types, token_type)
+            regex_sequence.generate_nfa()
+
+            regex_sequences.append(regex_sequence)
+
+        self.lexer_dfa = NFA(nfa_lst=[r.nfa for r in regex_sequences])
+        self.lexer_dfa = self.lexer_dfa.gen_dfa()
+        self.lexer_dfa = self.lexer_dfa.gen_minimal_dfa()
+
+        self.lexer_dfa.display()
