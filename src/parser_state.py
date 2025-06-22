@@ -1,6 +1,10 @@
 from utils import *
 
-class LRProduction: # NOTE: LRItem is probably a more fitting name
+# TODO: create LRProduction to abstract the productions
+    # should generate LRItem
+    # should be print-able
+
+class LRItem:
     def __init__(self, nonterminal, symbols, lookaheads):
         self.nonterminal = nonterminal
         self.symbols = symbols # rule: [(nonterminal?, symbol)]
@@ -8,7 +12,7 @@ class LRProduction: # NOTE: LRItem is probably a more fitting name
         self.lookaheads = lookaheads
 
     def copy(self):
-        new_copy = LRProduction(self.nonterminal, self.symbols, self.lookaheads.copy())
+        new_copy = LRItem(self.nonterminal, self.symbols, self.lookaheads.copy())
         new_copy.dot_position = self.dot_position
 
         return new_copy
@@ -18,7 +22,7 @@ class LRProduction: # NOTE: LRItem is probably a more fitting name
 
     def shift_dot(self):
         if self.is_complete():
-            raise ApplicationError("An LR Production has encountered an error!")
+            raise ApplicationError("An LR Item has encountered an error!")
 
         self.dot_position += 1
 
@@ -54,7 +58,7 @@ class LRProduction: # NOTE: LRItem is probably a more fitting name
     def get_lookaheads(self):
         return self.lookaheads
 
-    def get_closure_productions(self, grammar):
+    def get_closure_items(self, grammar):
         closure_set = set()
         if self.is_complete():
             return closure_set
@@ -70,10 +74,9 @@ class LRProduction: # NOTE: LRItem is probably a more fitting name
         if grammar_rules is None:
             return closure_set
 
-        # construct the LRProductions
         for rule in grammar_rules:
-            production = LRProduction(closure_nonterminal, rule, lookahead_set)
-            closure_set.add(production)
+            item = LRItem(closure_nonterminal, rule, lookahead_set)
+            closure_set.add(item)
 
         return closure_set
 
@@ -100,62 +103,62 @@ class LRProduction: # NOTE: LRItem is probably a more fitting name
         return f"{self.nonterminal} => {' '.join(symbol_str)} ,LA={''.join(self.lookaheads)}"
 
 class ParserState:
-    def __init__(self, productions, grammar):
-        self.productions = productions
+    def __init__(self, items, grammar):
+        self.items = items
         self.grammar = grammar
 
-        # new productions is subset of productions
-        new_productions = self.productions.copy()
-        while len(new_productions) > 0:
-            curr_production = new_productions.pop()
+        # new items is subset of items
+        new_items = self.items.copy()
+        while len(new_items) > 0:
+            curr_item = new_items.pop()
 
-            if curr_production.is_complete():
+            if curr_item.is_complete():
                 continue
 
-            closure_productions = curr_production.get_closure_productions(grammar)
-            for new_production in closure_productions:
-                if new_production in self.productions:
+            closure_items = curr_item.get_closure_items(grammar)
+            for new_item in closure_items:
+                if new_item in self.items:
                     continue
 
-                self.productions.add(new_production)
-                new_productions.add(new_production)
+                self.items.add(new_item)
+                new_items.add(new_item)
 
     def get_goto_states(self):
         transitions = dict()
 
-        for production in self.productions:
-            if production.is_complete():
+        for item in self.items:
+            if item.is_complete():
                 continue
 
-            next_symbol = production.get_next_symbol()
-            new_production = production.copy()
-            new_production.shift_dot()
+            next_symbol = item.get_next_symbol()
+            new_item = item.copy()
+            new_item.shift_dot()
             if next_symbol in transitions:
-                transitions[next_symbol].add(new_production)
+                transitions[next_symbol].add(new_item)
             else:
-                transitions[next_symbol] = set([new_production])
+                transitions[next_symbol] = set([new_item])
 
         new_states = []
-        for symbol, production in transitions.items():
-            new_state = ParserState(production, self.grammar)
+        for symbol, item in transitions.items():
+            new_state = ParserState(item, self.grammar)
             new_states.append((symbol, new_state))
 
         return new_states
 
-    def get_completed_productions(self):
-        completed_productions = set()
+    def get_completed_items(self):
+        completed_items = set()
 
-        for production in self.productions:
-            if not production.is_complete():
+        for item in self.items:
+            if not item.is_complete():
                 continue
 
-            completed_productions.add(production)
+            completed_items.add(item)
 
-        return completed_productions
+        return completed_items
 
     def __hash__(self):
-        hashable_set = frozenset(self.productions)
+        hashable_set = frozenset(self.items)
         return hash(hashable_set)
 
     def __eq__(self, other):
-        return self.productions == other.productions
+        return self.items == other.items

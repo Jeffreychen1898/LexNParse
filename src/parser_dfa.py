@@ -1,13 +1,13 @@
-from parser_state import ParserState, LRProduction
+from parser_state import ParserState, LRItem
 from parse_table import ParseTable
 
 class ParserDFA:
     def __init__(self, grammar, start_symbol):
         # create the initial state
         start_sym = (True, start_symbol)
-        start_productions = [LRProduction(start_symbol, rule, {"$"}) for rule in grammar.get_rules(start_symbol)]
+        start_items = [LRItem(start_symbol, rule, {"$"}) for rule in grammar.get_rules(start_symbol)]
 
-        start_state = ParserState(set(start_productions), grammar)
+        start_state = ParserState(set(start_items), grammar)
 
         self.states = [start_state]
 
@@ -30,16 +30,16 @@ class ParserDFA:
             goto_states = curr_state.get_goto_states()
 
             # reduce
-            for production in curr_state.get_completed_productions():
-                for lookahead in production.get_lookaheads():
+            for item in curr_state.get_completed_items():
+                for lookahead in item.get_lookaheads():
                     production_id = -1
-                    stored_production = production.get_production()
-                    if stored_production in reduce_productions_id:
-                        production_id = reduce_productions_id[stored_production]
+                    production = item.get_production()
+                    if production in reduce_productions_id:
+                        production_id = reduce_productions_id[production]
                     else:
                         production_id = len(self.reduce_productions)
-                        self.reduce_productions.append(stored_production)
-                        reduce_productions_id[stored_production] = production_id
+                        self.reduce_productions.append(production)
+                        reduce_productions_id[production] = production_id
 
                     self.parse_table.insert_entry(curr_state_id, (False, lookahead), ("r", production_id))
 
@@ -63,6 +63,6 @@ class ParserDFA:
                     self.parse_table.insert_entry(curr_state_id, symbol, action)
                     # push transition
 
-        for i, production in enumerate(self.reduce_productions):
-            print(f"{i}: {production}")
+        for i, item in enumerate(self.reduce_productions):
+            print(f"{i}: {item}")
         self.parse_table.display()
