@@ -5,6 +5,11 @@ class ParseTable:
         self.table = []
 
     def insert_entry(self, state, symbol, action):
+        if symbol[0] and action[0] != "g":
+            raise ApplicationError("A nonterminal symbol can ONLY have GOTO action!")
+        if not symbol[1] and action[0] == "g":
+            raise ApplicationError("A terminal symbol CANNOT have GOTO action!")
+
         while state >= len(self.table):
             self.table.append(dict())
 

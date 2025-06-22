@@ -1,13 +1,14 @@
 from utils import *
 
-class LRProduction:
-    def __init__(self, nonterminal, symbols):
+class LRProduction: # NOTE: LRItem is probably a more fitting name
+    def __init__(self, nonterminal, symbols, lookaheads):
         self.nonterminal = nonterminal
         self.symbols = symbols # rule: [(nonterminal?, symbol)]
         self.dot_position = 0
+        self.lookaheads = lookaheads
 
     def copy(self):
-        new_copy = LRProduction(self.nonterminal, self.symbols)
+        new_copy = LRProduction(self.nonterminal, self.symbols, self.lookaheads.copy())
         new_copy.dot_position = self.dot_position
 
         return new_copy
@@ -21,8 +22,37 @@ class LRProduction:
 
         self.dot_position += 1
 
+    def get_production(self):
+        return (self.nonterminal, tuple(self.symbols))
+
     def get_next_symbol(self):
         return self.symbols[self.dot_position]
+
+    def eval_next_symbol_lookaheads(self, grammar):
+        lookahead_set = set()
+        
+        inherit_parent_lookahead = True
+        for i in range(self.dot_position + 1, len(self.symbols)):
+            next_symbol = self.symbols[i][1]
+            if not self.symbols[i][0]:
+                lookahead_set.add(next_symbol)
+                inherit_parent_lookahead = False
+                break
+
+            first_set = grammar.get_FIRST_set(next_symbol)
+            lookahead_set.update(first_set)
+
+            if not grammar.contains_epsilon(next_symbol):
+                inherit_parent_lookahead = False
+                break
+
+        if inherit_parent_lookahead:
+            lookahead_set.update(self.lookaheads)
+
+        return lookahead_set
+
+    def get_lookaheads(self):
+        return self.lookaheads
 
     def get_closure_productions(self, grammar):
         closure_set = set()
@@ -33,6 +63,8 @@ class LRProduction:
         if not next_symbol[0]:
             return closure_set
 
+        lookahead_set = self.eval_next_symbol_lookaheads(grammar)
+
         closure_nonterminal = next_symbol[1]
         grammar_rules = grammar.get_rules(closure_nonterminal)
         if grammar_rules is None:
@@ -40,13 +72,13 @@ class LRProduction:
 
         # construct the LRProductions
         for rule in grammar_rules:
-            production = LRProduction(closure_nonterminal, rule)
+            production = LRProduction(closure_nonterminal, rule, lookahead_set)
             closure_set.add(production)
 
         return closure_set
 
     def __hash__(self):
-        return hash((self.nonterminal, tuple(self.symbols), self.dot_position))
+        return hash((self.nonterminal, tuple(self.symbols), self.dot_position, frozenset(self.lookaheads)))
 
     def __eq__(self, other):
         if self.nonterminal != other.nonterminal:
@@ -58,7 +90,14 @@ class LRProduction:
         if self.symbols != other.symbols:
             return False
 
+        if self.lookaheads != other.lookaheads:
+            return False
+
         return True
+
+    def __str__(self):
+        symbol_str = ["$" + symbol[1] if symbol[0] else symbol[1] for symbol in self.symbols]
+        return f"{self.nonterminal} => {' '.join(symbol_str)} ,LA={''.join(self.lookaheads)}"
 
 class ParserState:
     def __init__(self, productions, grammar):
