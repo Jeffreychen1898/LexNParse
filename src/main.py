@@ -34,10 +34,11 @@ def main():
     grammar.insert_rule("S", [(True, "C"), (True, "C")])
     grammar.insert_rule("C", [(False, "c"), (True, "C")])
     grammar.insert_rule("C", [(False, "d")])"""
+
     grammar.insert_rule("G", [(True, "S")])
-    grammar.insert_rule("S", [(True, "A"), (True, "A")])
-    grammar.insert_rule("A", [(False, "a"), (True, "A")])
-    grammar.insert_rule("A", [(False, "b")])
+    grammar.insert_rule("S", [(True, "C"), (True, "C")])
+    grammar.insert_rule("C", [(False, "c"), (True, "C")])
+    grammar.insert_rule("C", [(False, "d")])
 
     grammar.eval_FIRST_set()
     print(grammar.get_FIRST_set("G"))

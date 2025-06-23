@@ -4,6 +4,33 @@ from utils import *
     # should generate LRItem
     # should be print-able
 
+# TODO have LRItem inherit LR0Item
+
+class LR0Item:
+    def __init__(self, nonterminal, symbols):
+        self.nonterminal = nonterminal
+        self.symbols = symbols
+        self.dot_position = 0
+
+    def __hash__(self):
+        return hash((self.nonterminal, tuple(self.symbols), self.dot_position))
+
+    def __eq__(self, other):
+        if self.nonterminal != other.nonterminal:
+            return False
+
+        if self.symbols != other.symbols:
+            return False
+
+        if self.dot_position != other.dot_position:
+            return False
+
+        return True
+
+    def __str__(self):
+        symbol_str = ["$" + symbol[1] if symbol[0] else symbol[1] for symbol in self.symbols]
+        return f"{self.nonterminal} => {' '.join(symbol_str)}"
+
 class LRItem:
     def __init__(self, nonterminal, symbols, lookaheads):
         self.nonterminal = nonterminal
@@ -16,6 +43,9 @@ class LRItem:
         new_copy.dot_position = self.dot_position
 
         return new_copy
+
+    def merge(self, other):
+        self.lookaheads.update(other.lookaheads)
 
     def is_complete(self):
         return self.dot_position >= len(self.symbols)
@@ -80,6 +110,11 @@ class LRItem:
 
         return closure_set
 
+    def get_lr0_item(self):
+        new_lr0_item = LR0Item(self.nonterminal, self.symbols)
+        new_lr0_item.dot_position = self.dot_position
+        return new_lr0_item
+
     def __hash__(self):
         return hash((self.nonterminal, tuple(self.symbols), self.dot_position, frozenset(self.lookaheads)))
 
@@ -100,33 +135,57 @@ class LRItem:
 
     def __str__(self):
         symbol_str = ["$" + symbol[1] if symbol[0] else symbol[1] for symbol in self.symbols]
-        return f"{self.nonterminal} => {' '.join(symbol_str)} ,LA={''.join(self.lookaheads)}"
+        return f"{self.nonterminal} => {' '.join(symbol_str[:self.dot_position])} . {' '.join(symbol_str[self.dot_position:])} ,LA={''.join(self.lookaheads)}"
 
+# TODO: write merge and for parser state, join similar items
 class ParserState:
     def __init__(self, items, grammar):
-        self.items = items
+        self.lr_items = dict()
         self.grammar = grammar
 
+        # ensure similar items are merged
+        for item in items:
+            item_core = item.get_lr0_item()
+            if item_core in self.lr_items:
+                self.lr_items[item_core].merge(item)
+            else:
+                self.lr_items[item_core] = item
+
         # new items is subset of items
-        new_items = self.items.copy()
-        while len(new_items) > 0:
-            curr_item = new_items.pop()
+        new_lr_items = self.lr_items.copy()
+        while len(new_lr_items) > 0:
+            curr_item_core, curr_item = new_lr_items.popitem()
 
             if curr_item.is_complete():
                 continue
 
             closure_items = curr_item.get_closure_items(grammar)
             for new_item in closure_items:
-                if new_item in self.items:
+                new_item_core = new_item.get_lr0_item()
+                if new_item_core in self.lr_items:
+                    self.lr_items[new_item_core].merge(new_item)
                     continue
 
-                self.items.add(new_item)
-                new_items.add(new_item)
+                self.lr_items[new_item_core] = new_item
+                new_lr_items[new_item_core] = new_item
+
+    def merge(self, other):
+        if len(other.lr_items) != len(self.lr_items):
+            raise ApplicationError("Parser state cannot be merged! Invalid number of items")
+
+        for item_core, item in other.lr_items.items():
+            if item_core not in self.lr_items:
+                raise ApplicationError("Parser state cannot be merged! Invalid items detected!")
+
+            self.lr_items[item_core].merge(item)
+
+    def get_item_cores(self):
+        return frozenset(self.lr_items.keys())
 
     def get_goto_states(self):
         transitions = dict()
 
-        for item in self.items:
+        for _, item in self.lr_items.items():
             if item.is_complete():
                 continue
 
@@ -148,7 +207,7 @@ class ParserState:
     def get_completed_items(self):
         completed_items = set()
 
-        for item in self.items:
+        for item_core, item in self.lr_items.items():
             if not item.is_complete():
                 continue
 
@@ -156,9 +215,13 @@ class ParserState:
 
         return completed_items
 
+    def display(self):
+        for lr_item in self.lr_items.values():
+            print(str(lr_item))
+
     def __hash__(self):
-        hashable_set = frozenset(self.items)
+        hashable_set = frozenset(self.lr_items.values())
         return hash(hashable_set)
 
     def __eq__(self, other):
-        return self.items == other.items
+        return self.lr_items == other.lr_items
