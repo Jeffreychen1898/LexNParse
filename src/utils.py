@@ -58,6 +58,9 @@ class BitMap:
     def bitor(self, other):
         self.bitmap = bytearray(a | b for a, b in zip(self.bitmap, other.bitmap))
 
+class SyntaxErr(Exception):
+    pass
+
 class InvalidParse(Exception):
     pass
 

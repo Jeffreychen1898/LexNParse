@@ -64,7 +64,7 @@ class State:
             transitions.append(f"{bitmap} => {state}")
 
         transitions_str = ",".join(transitions)
-        attribs_str = ",".join(list(self.attributes))
+        attribs_str = ",".join([ str(attrib) for attrib in list(self.attributes)])
         return f"[{transitions_str}] <{attribs_str}>"
 
 class NFA:

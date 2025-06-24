@@ -1,83 +1,119 @@
 from utils import BitMap, InvalidParse
 import strsplit
-from strsplit import StringSplit
 from regex_sequence import RegexSequence
 
 from nfa import NFA
 
-TOKEN_REGEX = ["[a-zA-Z0-9_$]*", " *: *", "\".*\""]
+LEXER_AMBIGUITY_STRICT = "strict"
+LEXER_AMBIGUITY_FIRST = "first"
+LEXER_AMBIGUITY_LAST = "last"
 
 class Lexer:
-    def __init__(self, lexer_tokens):
-        self.lexer_tokens = dict()
-        self.lexer_dfa = None
+    def __init__(self, tokens, ambig_resolution=LEXER_AMBIGUITY_STRICT):
+        self.ambiguity_resolution = ambig_resolution
+        self.assert_valid_ambiguity_resolution()
 
-        # generate nfa to parse the lexer file
-        regex_sequences = []
-        for i, tk_re in enumerate(TOKEN_REGEX):
-            split_str = StringSplit(tk_re)
+        self.regex_sequences = []
+        for i, (token_name, token_regex) in enumerate(tokens):
+            split_str = strsplit.StringSplit(token_regex)
             tokens, types = split_str.run()
 
             tokens, types = self.regex_rewriting(tokens, types)
-            regex_sequence = RegexSequence(tokens, types, str(i))
+            regex_sequence = RegexSequence(tokens, types, (token_name, i))
             regex_sequence.generate_nfa()
 
-            regex_sequences.append(regex_sequence)
+            self.regex_sequences.append(regex_sequence)
 
-        nfa = NFA(nfa_lst=[r.nfa for r in regex_sequences])
+        nfa = NFA(nfa_lst=[r.nfa for r in self.regex_sequences])
         dfa = nfa.gen_dfa()
-        dfa = dfa.gen_minimal_dfa()
+        self.dfa = dfa.gen_minimal_dfa()
 
-        # parse the token rules
-        for tk in lexer_tokens:
-            token_seq = []
-            tk_val = ""
-            prev_accept = None
-            prev_idx = 0
-            curr_idx = 0
-            while curr_idx < len(tk):
-                try:
-                    dfa.step(tk[curr_idx])
-                except InvalidParse:
-                    if prev_accept is None:
-                        raise InvalidParse("Error on parsing token!")
-                    token_seq.append(prev_accept)
-                    curr_idx = prev_idx
-                    prev_accept = None
-                    tk_val = ""
-                    dfa.reset()
-                    curr_idx += 1
-                    continue
+    def tokenize(self, input_stream):
+        token_sequence = []
+        token_value = ""
 
-                tk_val += tk[curr_idx]
-                state_attribs = dfa.get_state_attributes(dfa.get_current_state())
-                if len(state_attribs) > 1:
-                    raise ApplicationError("Ambiguity detected in token regexes!")
-                if state_attribs:
-                    prev_accept = (tk_val, state_attribs.pop())
-                    prev_idx = curr_idx
+        prev_accept = None
+        prev_index = 0
 
-                curr_idx += 1
+        curr_index = 0
+        while curr_index < len(input_stream):
+            try:
+                self.dfa.step(input_stream[curr_index])
+            except InvalidParse:
+                if prev_accept is None:
+                    raise InvalidParse("Error on parsing token!")
+                token_sequence.append(prev_accept)
+                curr_index = prev_index
 
+                prev_accept = None
+                token_value = ""
+                self.dfa.reset()
+                curr_index += 1
+                continue
 
-            if prev_accept is None or prev_idx != len(tk) - 1:
-                raise InvalidParse("Error on parsing token!")
-            token_seq.append(prev_accept)
-            dfa.reset()
+            token_value += input_stream[curr_index]
 
-            # ensure the tokens are in the right order
-            prev_tk = -1
-            for tk in token_seq:
-                if int(tk[1]) < prev_tk:
-                    raise InvalidParse("Invalid Syntax in lexer file!")
-                prev_tk = int(tk[1])
+            state_attribs = self.dfa.get_state_attributes(self.dfa.get_current_state())
+            select_attrib = self.select_state_attrib(state_attribs)
+            if select_attrib:
+                prev_accept = (token_value, select_attrib)
+                prev_index = curr_index
+            elif curr_index == len(input_stream) - 1:
+                if prev_accept is None:
+                    raise InvalidParse("Error on parsing token!")
+                token_sequence.append(prev_accept)
+                curr_index = prev_index
 
-            if token_seq[0] in self.lexer_tokens:
-                raise InvalidParse(f"Token {token_seq[0][0]} is already defined!")
+                prev_accept = None
+                token_value = ""
+                self.dfa.reset()
 
-            self.lexer_tokens[token_seq[0][0]] = token_seq[2][0]
+            curr_index += 1
 
-        print(self.lexer_tokens)
+        if prev_accept is None or prev_index != len(input_stream) - 1:
+            raise InvalidParse("Lexer has rejected the input stream")
+        self.dfa.reset()
+
+        token_sequence.append(prev_accept)
+
+        return token_sequence
+
+    def select_state_attrib(self, state_attribs):
+        if self.ambiguity_resolution == LEXER_AMBIGUITY_STRICT:
+            if len(state_attribs) > 1:
+                raise InvalidParse("Ambiguity detected while tokenizing input stream!")
+
+            if state_attribs:
+                return state_attribs.pop()[0]
+            else:
+                return None
+
+        elif self.ambiguity_resolution == LEXER_AMBIGUITY_FIRST:
+            if len(state_attribs) > 0:
+                return min(state_attribs, key=lambda elem: elem[1])[0]
+            else:
+                return None
+
+        elif self.ambiguity_resolution == LEXER_AMBIGUITY_LAST:
+            if len(state_attribs) > 0:
+                return max(state_attribs, key=lambda elem: elem[1])[0]
+            else:
+                return None
+
+        return None
+
+    def assert_valid_ambiguity_resolution(self):
+        if self.ambiguity_resolution == LEXER_AMBIGUITY_STRICT:
+            return
+        if self.ambiguity_resolution == LEXER_AMBIGUITY_FIRST:
+            return
+        if self.ambiguity_resolution == LEXER_AMBIGUITY_LAST:
+            return
+
+        raise InvalidParse(f"Invalid lexer ambiguity resolution {self.ambiguity_resolution}")
+
+    def get_dfa(self):
+        return self.dfa
 
     def regex_rewriting(self, tokens, types):
         rewritten_tokens = []
@@ -115,7 +151,7 @@ class Lexer:
     def construct_dfa(self):
         regex_sequences = []
         for token_type, token_defn in self.lexer_tokens.items():
-            split_str = StringSplit(token_defn[1:-1])
+            split_str = strsplit.StringSplit(token_defn[1:-1])
             tokens, types = split_str.run()
 
             tokens, types = self.regex_rewriting(tokens, types)

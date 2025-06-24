@@ -122,7 +122,9 @@ class StringSplit:
         for c in string:
             symbol = c
             # modify symbol to irrelevant symbol on open_paren_cnt > 0
-            if open_paren_cnt > 1:
+            if open_paren_cnt > 0 and c == "(":
+                symbol = " "
+            elif open_paren_cnt > 1 and c == ")":
                 symbol = " "
 
             # run the dfa

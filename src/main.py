@@ -1,7 +1,8 @@
 from lexer import Lexer
-from parser import Parser
 from parser_dfa import ParserDFA
 from grammar import Grammar
+
+from parse_file_reader import ParseFileReader
 
 def read_lex_file(filename):
     token_rules = []
@@ -21,9 +22,15 @@ def main():
     #lex = Lexer(token_rules)
     #lex.construct_dfa()
 
-    #parser = Parser()
-    grammar = Grammar()
-    """grammar.insert_rule("G", [(True, "S"), (False, "$")])
+    parse_reader = ParseFileReader()
+    parse_reader.read_file("./tests/test.txt")
+
+    print(parse_reader.get_ambig_priority())
+    print(parse_reader.get_defined_tokens())
+    print(parse_reader.get_defined_grammar())
+
+    """grammar = Grammar()
+    grammar.insert_rule("G", [(True, "S"), (False, "$")])
     grammar.insert_rule("S", [(True, "A")])
     grammar.insert_rule("A", [(False, "("), (True, "A"), (True, "B"), (False, ")")])
     grammar.insert_rule("A", [(False, "("), (False, ")")])
@@ -35,14 +42,14 @@ def main():
     grammar.insert_rule("C", [(False, "c"), (True, "C")])
     grammar.insert_rule("C", [(False, "d")])"""
 
-    grammar.insert_rule("G", [(True, "S")])
+    """grammar.insert_rule("G", [(True, "S")])
     grammar.insert_rule("S", [(True, "C"), (True, "C")])
     grammar.insert_rule("C", [(False, "c"), (True, "C")])
-    grammar.insert_rule("C", [(False, "d")])
+    grammar.insert_rule("C", [(False, "d")])"""
 
-    grammar.eval_FIRST_set()
+    """grammar.eval_FIRST_set()
     print(grammar.get_FIRST_set("G"))
 
-    parser_dfa = ParserDFA(grammar, "G")
+    parser_dfa = ParserDFA(grammar, "G")"""
 
 main()
