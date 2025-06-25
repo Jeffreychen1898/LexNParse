@@ -17,6 +17,8 @@ class ParseTable:
             if self.table[state][symbol] == action:
                 return
 
+            print(self.table[state][symbol])
+            print(action)
             raise InvalidParse("A conflict is encountered in the LALR(1) grammar!")
 
         self.table[state][symbol] = action

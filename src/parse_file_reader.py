@@ -1,6 +1,62 @@
 from utils import *
 from lexer import Lexer, LEXER_AMBIGUITY_FIRST, LEXER_AMBIGUITY_STRICT
 
+# TODO: revamp this to use LALR instead of a dfa. More expressive and CLEANER
+"""
+DEFNS :=
+    AMBIGUITY_CHECK GAP DEFN
+
+DEFN :=
+    TOKEN GAP DEFN
+    GRAMMAR GAP DEFN
+    __epsilon__
+
+TOKEN :=
+    varname SPACE tk_defn GAP tk_regex SPACE semicolon
+
+GRAMMAR :=
+    varname GAP scope_beg GAP PRODUCTIONS scope_end CODE
+
+PRODUCTIONS :=
+    PRODUCTION SPACE semicolon GAP PRODUCTIONS
+    __epsilon__
+
+PRODUCTION :=
+    PRODUCTION GAP SYMBOL
+    __epsilon__
+
+SYMBOL :=
+    VARIABLE SPACE RENAME
+
+RENAME :=
+    angle_open CPPVariable angle_close
+    __epsilon__
+
+CPPVariable :=
+    cppvariable
+    varname
+    special_variable
+
+CODE :=
+    GAP codeblock
+
+VARIABLE :=
+    varname
+    special_variable
+
+AMBIGUITY_CHECK :=
+    varname varname
+    __epsilon__
+
+SPACE :=
+    space
+    __epsilon__
+
+GAP :=
+    space GAP
+    __epsilon__
+
+"""
 class ParseFileReader:
     def __init__(self):
         self.parse_file_tokens = [
@@ -8,13 +64,16 @@ class ParseFileReader:
             ("comment_multi_beg", "/\*"),
             ("comment_multi_end", "\*/"),
 
+            ("code_beg", "{%"),
+            ("code_end", "%}"),
+
             ("varname", "[a-zA-Z0-9][a-zA-Z0-9_]*"),
 
             ("tk_defn", ":"),
             ("tk_regex", "\".*\""),
 
-            ("scope_beg", "{"),
-            ("scope_end", "}"),
+            ("scope_beg", "\("),
+            ("scope_end", "\)"),
             ("special_variable", "__[a-z_]+__"),
             ("semicolon", ";"),
 
@@ -30,13 +89,16 @@ class ParseFileReader:
             "scope_end": 'e',
             "special_variable": 's',
             "semicolon": 'c',
-            "space": 'p'
+            "space": 'p',
+            "code_beg": "x",
+            "code_end": "y",
+            "arbitrary": "a"
         }
 
         rules = [
-            ("new_token", "vp?dp?rp?c"),
-            ("new_grammar", "vp?bp?(((v|s)p?)+p?cp?)+e"),
-            ("ambig_priority", "vpvp?c")
+            ("new_token", "vp?dp*rp?cp*"),
+            ("new_grammar", "vp*bp*(((v|s)p*)+p?cp*)+ep*(x[^xy]*y)?p*"),
+            ("ambig_priority", "vpvp?cp*")
         ]
         self.token_reader_lexer = Lexer(rules, ambig_resolution=LEXER_AMBIGUITY_STRICT)
 
@@ -62,11 +124,12 @@ class ParseFileReader:
         token_sequences = []
         with open(filename, "r") as file:
             for line in file:
-                if len(line.strip()) == 0:
+                cleaned_line = line.rstrip("\n").replace("\t", " " * 4)
+                if len(cleaned_line) == 0:
                     token_sequences.append([])
                     continue
 
-                line_tokens = self.lexer.tokenize(line.strip())
+                line_tokens = self.lexer.tokenize(cleaned_line)
                 token_sequences.append(line_tokens)
 
         self.parse_file(token_sequences)
@@ -106,7 +169,7 @@ class ParseFileReader:
                 tk_reader_dfa.step(symbol)
             except InvalidParse:
                 if prev_accept is None:
-                    raise ApplicationError("Error on parsing token!")
+                    raise SyntaxErr("Error on parsing token!")
                 self.parse_block(prev_accept[0], prev_accept[1])
                 curr_index = prev_index
 
@@ -125,7 +188,7 @@ class ParseFileReader:
                 prev_index = curr_index
             elif curr_index == len(self.tokens) - 1:
                 if prev_accept is None:
-                    raise ApplicationError("Error detected while reading tokens!")
+                    raise SyntaxErr("Error detected while reading tokens!")
                 self.parse_block(prev_accept[0], prev_accept[1])
                 curr_index = prev_index
 
@@ -136,7 +199,7 @@ class ParseFileReader:
             curr_index += 1
 
         if prev_accept is None or prev_index != len(self.tokens) - 1:
-            raise ApplicationError("Lexer has rejected the input stream while reading tokens!")
+            raise SyntaxErr("Lexer has rejected the input stream while reading tokens!")
         tk_reader_dfa.reset()
 
         self.parse_block(prev_accept[0], prev_accept[1])
@@ -185,7 +248,11 @@ class ParseFileReader:
 
         self.defined_grammar[grammar_name] = set()
         token_seq = []
-        for tk in tks[1:]:
+        for i, tk in enumerate(tks[1:]):
+            if tk[1] == "code_beg":
+                print(self.assemble_code_blocks(tks[i + 1:]))
+                break
+
             if tk[1] == "varname" or tk[1] == "special_variable":
                 token_seq.append(tk)
             elif tk[1] == "semicolon":
@@ -194,6 +261,19 @@ class ParseFileReader:
 
         if len(token_seq) > 0:
             self.defined_grammar[grammar_name].add(tuple(token_seq))
+
+    def assemble_code_blocks(self, commented_tokens):
+        last_line = commented_tokens[0][2]
+        code_block = ""
+
+        for tk in commented_tokens[1:-1]:
+            line_difference = tk[2] - last_line
+            code_block += "\n" * line_difference
+            last_line += line_difference
+
+            code_block += tk[0]
+
+        return code_block
 
     def remove_comments(self, token_sequences):
         multicomment_on = False
@@ -212,9 +292,6 @@ class ParseFileReader:
 
                 if multicomment_on:
                     continue
-
-                if token[1] == "arbitrary":
-                    raise SyntaxErr(f"Syntax error in file {self.filename} on line {i + 1}!")
 
                 new_token_list.append((token[0], token[1], i))
 

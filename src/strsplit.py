@@ -187,5 +187,5 @@ class StringSplit:
 
         # transitions to self
         self.dfa.new_transitions(self.state_a, self.state_a, to_self)
-        self.dfa.new_transitions(self.state_b, self.state_b, to_self)
+        self.dfa.new_transitions(self.state_b, self.state_b, b_to_self)
         self.dfa.new_transitions(self.state_c, self.state_c, to_self)
