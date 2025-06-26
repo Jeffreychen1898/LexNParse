@@ -147,21 +147,3 @@ class Lexer:
             prev_ty = ty
 
         return (rewritten_tokens, rewritten_types)
-
-    def construct_dfa(self):
-        regex_sequences = []
-        for token_type, token_defn in self.lexer_tokens.items():
-            split_str = strsplit.StringSplit(token_defn[1:-1])
-            tokens, types = split_str.run()
-
-            tokens, types = self.regex_rewriting(tokens, types)
-            regex_sequence = RegexSequence(tokens, types, token_type)
-            regex_sequence.generate_nfa()
-
-            regex_sequences.append(regex_sequence)
-
-        self.lexer_dfa = NFA(nfa_lst=[r.nfa for r in regex_sequences])
-        self.lexer_dfa = self.lexer_dfa.gen_dfa()
-        self.lexer_dfa = self.lexer_dfa.gen_minimal_dfa()
-
-        self.lexer_dfa.display()

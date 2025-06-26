@@ -12,6 +12,12 @@ class LR0Item:
         self.symbols = symbols
         self.dot_position = 0
 
+    def get_symbols(self):
+        return self.symbols
+
+    def get_nonterminal(self):
+        return self.nonterminal
+
     def __hash__(self):
         return hash((self.nonterminal, tuple(self.symbols), self.dot_position))
 

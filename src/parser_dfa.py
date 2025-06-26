@@ -20,8 +20,6 @@ class ParserDFA:
         self.merge_states()
         self.generate_table()
 
-        self.display()
-
     def generate_transitions(self, start):
         self.states = [start]
         self.transitions = [dict()]
@@ -106,6 +104,12 @@ class ParserDFA:
                 for lookahead in lookahead_symbols:
                     symbol = (False, lookahead)
                     self.parse_table.insert_entry(i, symbol, action)
+
+        # append productions into parse table
+        self.parse_table.set_productions(self.productions)
+
+    def get_table(self):
+        return self.parse_table
 
     def display(self):
         for i, production in enumerate(self.productions):

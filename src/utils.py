@@ -61,6 +61,15 @@ class BitMap:
 class SyntaxErr(Exception):
     pass
 
+class DuplicateVariable(Exception):
+    pass
+
+class UndefinedVariable(Exception):
+    pass
+
+class GrammarError(Exception):
+    pass
+
 class InvalidParse(Exception):
     pass
 

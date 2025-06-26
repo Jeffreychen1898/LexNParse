@@ -1,62 +1,11 @@
 from utils import *
-from lexer import Lexer, LEXER_AMBIGUITY_FIRST, LEXER_AMBIGUITY_STRICT
+from lexer import Lexer, LEXER_AMBIGUITY_FIRST
+from parser_dfa import ParserDFA
+from grammar import Grammar
+from parse_file_ast import *
 
-# TODO: revamp this to use LALR instead of a dfa. More expressive and CLEANER
-"""
-DEFNS :=
-    AMBIGUITY_CHECK GAP DEFN
+CODE_BLOCK_TK = "codeblock"
 
-DEFN :=
-    TOKEN GAP DEFN
-    GRAMMAR GAP DEFN
-    __epsilon__
-
-TOKEN :=
-    varname SPACE tk_defn GAP tk_regex SPACE semicolon
-
-GRAMMAR :=
-    varname GAP scope_beg GAP PRODUCTIONS scope_end CODE
-
-PRODUCTIONS :=
-    PRODUCTION SPACE semicolon GAP PRODUCTIONS
-    __epsilon__
-
-PRODUCTION :=
-    PRODUCTION GAP SYMBOL
-    __epsilon__
-
-SYMBOL :=
-    VARIABLE SPACE RENAME
-
-RENAME :=
-    angle_open CPPVariable angle_close
-    __epsilon__
-
-CPPVariable :=
-    cppvariable
-    varname
-    special_variable
-
-CODE :=
-    GAP codeblock
-
-VARIABLE :=
-    varname
-    special_variable
-
-AMBIGUITY_CHECK :=
-    varname varname
-    __epsilon__
-
-SPACE :=
-    space
-    __epsilon__
-
-GAP :=
-    space GAP
-    __epsilon__
-
-"""
 class ParseFileReader:
     def __init__(self):
         self.parse_file_tokens = [
@@ -64,51 +13,36 @@ class ParseFileReader:
             ("comment_multi_beg", "/\*"),
             ("comment_multi_end", "\*/"),
 
-            ("code_beg", "{%"),
-            ("code_end", "%}"),
+            ("code_begin", "=>"),
 
-            ("varname", "[a-zA-Z0-9][a-zA-Z0-9_]*"),
+            ("varname", "[a-zA-Z0-9_][a-zA-Z0-9_$]*"),
 
             ("tk_defn", ":"),
             ("tk_regex", "\".*\""),
 
-            ("scope_beg", "\("),
-            ("scope_end", "\)"),
-            ("special_variable", "__[a-z_]+__"),
+            ("angle_open", "<"),
+            ("angle_close", ">"),
+
+            ("paren_open", "\("),
+            ("paren_close", "\)"),
+
+            ("scope_begin", "{%"),
+            ("scope_end", "%}"),
             ("semicolon", ";"),
 
             ("space", " *"),
             ("arbitrary", ".")
         ]
 
-        self.token_enumeration = {
-            "varname": 'v',
-            "tk_defn": 'd',
-            "tk_regex": 'r',
-            "scope_beg": 'b',
-            "scope_end": 'e',
-            "special_variable": 's',
-            "semicolon": 'c',
-            "space": 'p',
-            "code_beg": "x",
-            "code_end": "y",
-            "arbitrary": "a"
-        }
-
-        rules = [
-            ("new_token", "vp?dp*rp?cp*"),
-            ("new_grammar", "vp*bp*(((v|s)p*)+p?cp*)+ep*(x[^xy]*y)?p*"),
-            ("ambig_priority", "vpvp?cp*")
-        ]
-        self.token_reader_lexer = Lexer(rules, ambig_resolution=LEXER_AMBIGUITY_STRICT)
+        self.grammar = Grammar()
+        self.setup_parse_file_grammar()
+        self.parse_file_dfa = ParserDFA(self.grammar, "DEFNS")
 
         self.lexer = Lexer(self.parse_file_tokens, ambig_resolution=LEXER_AMBIGUITY_FIRST)
         self.filename = ""
         self.tokens = []
 
         self.ambig_priority = LEXER_AMBIGUITY_STRICT
-        self.defined_tokens = dict()
-        self.defined_grammar = dict()
 
     def get_ambig_priority(self):
         return self.ambig_priority
@@ -132,148 +66,56 @@ class ParseFileReader:
                 line_tokens = self.lexer.tokenize(cleaned_line)
                 token_sequences.append(line_tokens)
 
-        self.parse_file(token_sequences)
+        return self.parse_file(token_sequences)
 
     def parse_file(self, token_sequences):
-        self.tokens = self.remove_comments(token_sequences)
-        self.read_tokens()
-        self.validate_file()
+        cleaned_tokens = self.remove_comments(token_sequences)
+        self.tokens = self.assemble_code_blocks(cleaned_tokens)
 
-    def validate_file(self):
-        for grammar_rule in self.defined_grammar.values():
-            for production in grammar_rule:
-                for each_tk in production:
-                    if each_tk[1] == "special_variable":
-                        continue
-                    if each_tk[0] in self.defined_tokens:
-                        continue
-                    if each_tk[0] in self.defined_grammar:
-                        continue
+        ast = self.read_token_stream()
+        ast.validate()
 
-                    raise SyntaxErr(f"Token or grammar rule {each_tk[0]} referenced in line {each_tk[2] + 1} cannot be found!")
-        # TODO:
-        # ensure all tokens are defined
-        pass
+        tokens = ast.get_tokens()
+        grammars = ast.get_grammars()
+        ambig_priority = ast.get_ambiguity_priority()
 
-    def read_tokens(self):
-        tk_reader_dfa = self.token_reader_lexer.get_dfa()
+        return (ambig_priority, tokens, grammars)
 
-        prev_accept = None
-        prev_index = 0
-
-        curr_index = 0
-        parse_tokens = []
-        while curr_index < len(self.tokens):
-            symbol = self.token_enumeration[self.tokens[curr_index][1]]
-            try:
-                tk_reader_dfa.step(symbol)
-            except InvalidParse:
-                if prev_accept is None:
-                    raise SyntaxErr("Error on parsing token!")
-                self.parse_block(prev_accept[0], prev_accept[1])
-                curr_index = prev_index
-
-                prev_accept = None
-                parse_tokens = []
-                tk_reader_dfa.reset()
-                curr_index += 1
-                continue
-
-            parse_tokens.append(self.tokens[curr_index])
-            state_attribs = tk_reader_dfa.get_state_attributes(tk_reader_dfa.get_current_state())
-            if len(state_attribs) > 1:
-                raise ApplicationError("Ambiguity detected while reading tokens!")
-            if state_attribs:
-                prev_accept = (parse_tokens.copy(), state_attribs.pop())
-                prev_index = curr_index
-            elif curr_index == len(self.tokens) - 1:
-                if prev_accept is None:
-                    raise SyntaxErr("Error detected while reading tokens!")
-                self.parse_block(prev_accept[0], prev_accept[1])
-                curr_index = prev_index
-
-                prev_accept = None
-                parse_tokens = []
-                tk_reader_dfa.reset()
-
-            curr_index += 1
-
-        if prev_accept is None or prev_index != len(self.tokens) - 1:
-            raise SyntaxErr("Lexer has rejected the input stream while reading tokens!")
-        tk_reader_dfa.reset()
-
-        self.parse_block(prev_accept[0], prev_accept[1])
-
-    def parse_block(self, block_tokens, block_type):
-        if block_type[0] == "ambig_priority":
-            self.parse_ambig_priority(block_tokens)
-        elif block_type[0] == "new_token":
-            self.parse_new_token(block_tokens)
-        elif block_type[0] == "new_grammar":
-            self.parse_new_grammar(block_tokens)
-
-    def parse_ambig_priority(self, tks):
-        tk_counter = 0
-        for tk in tks:
-            if tk[2] != 0:
-                raise SyntaxErr("Lexer ambiguity priority must be defined on line 1!")
-
-            if tk[1] == "space":
-                continue
-
-            if tk_counter == 1:
-                self.ambig_priority = tk[0]
-            tk_counter += 1
-
-    def parse_new_token(self, tks):
-        token_name = ""
-        token_regex = ""
-        line_number = tks[0][2] + 1
-        for tk in tks:
-            if tk[1] == "varname":
-                token_name = tk[0]
-            elif tk[1] == "tk_regex":
-                token_regex = tk[0]
-
-        if token_name in self.defined_tokens or token_name in self.defined_grammar:
-            raise SyntaxErr(f"Duplicate variable name found on line {line_number}!")
-
-        self.defined_tokens[token_name] = token_regex[1:-1]
-
-    def parse_new_grammar(self, tks):
-        grammar_name = tks[0][0]
-        line_number = tks[0][2] + 1
-        if grammar_name in self.defined_tokens or grammar_name in self.defined_grammar:
-            raise SyntaxErr(f"Duplicate variable name found on line {line_number}!")
-
-        self.defined_grammar[grammar_name] = set()
-        token_seq = []
-        for i, tk in enumerate(tks[1:]):
-            if tk[1] == "code_beg":
-                print(self.assemble_code_blocks(tks[i + 1:]))
-                break
-
-            if tk[1] == "varname" or tk[1] == "special_variable":
-                token_seq.append(tk)
-            elif tk[1] == "semicolon":
-                self.defined_grammar[grammar_name].add(tuple(token_seq))
-                token_seq = []
-
-        if len(token_seq) > 0:
-            self.defined_grammar[grammar_name].add(tuple(token_seq))
-
-    def assemble_code_blocks(self, commented_tokens):
-        last_line = commented_tokens[0][2]
+    def assemble_code_blocks(self, tks):
+        new_tokens = []
         code_block = ""
+        code_block_line_number = -1
+        code_block_curr_line = -1
+        in_code_block = False
 
-        for tk in commented_tokens[1:-1]:
-            line_difference = tk[2] - last_line
-            code_block += "\n" * line_difference
-            last_line += line_difference
+        for tk in tks:
+            if tk[1] == "code_begin":
+                if in_code_block:
+                    raise SyntaxErr(f"Invalid token {self.parse_file_tokens['code_begin']} on line {tk[2]}!")
 
-            code_block += tk[0]
+                in_code_block = True
+                code_block_line_number = tk[2]
+                code_block_curr_line = code_block_line_number
+            elif tk[1] == "scope_end" and in_code_block:
+                in_code_block = False
+                num_newline = tk[2] - code_block_curr_line
+                code_block += "\n" * num_newline
+                new_tokens.append((code_block, CODE_BLOCK_TK, code_block_line_number))
+                code_block = ""
+            else:
+                if not in_code_block:
+                    new_tokens.append(tk)
+                    continue
 
-        return code_block
+                num_newline = tk[2] - code_block_curr_line
+                code_block += "\n" * num_newline
+                code_block_curr_line += num_newline
+                code_block += tk[0]
+
+        if in_code_block:
+            raise SyntaxErr(f"Code block opened on line {code_block_line_number} not closed!")
+
+        return new_tokens
 
     def remove_comments(self, token_sequences):
         multicomment_on = False
@@ -296,3 +138,78 @@ class ParseFileReader:
                 new_token_list.append((token[0], token[1], i))
 
         return new_token_list
+
+    def read_token_stream(self):
+        parse_stack = [(0, None, None)]
+        stream_index = 0
+        parse_table = self.parse_file_dfa.get_table()
+
+        ast_handler = ParseFileAST()
+        self.tokens += [(None, "$", -1)]
+
+        while stream_index < len(self.tokens):
+            curr_state = parse_stack[-1][0]
+            tk = self.tokens[stream_index][1]
+            action = None
+            try:
+                query_token = (False, tk)
+                action = parse_table.get_action(curr_state, query_token)
+
+                if action[0] == "s":
+                    parse_stack.append((action[1], self.tokens[stream_index], None))
+                    stream_index += 1
+                else:
+                    production = parse_table.get_production(action[1])
+                    nonterminal, value = self.reduce_symbol(ast_handler, parse_stack, production)
+                    if nonterminal == "DEFNS":
+                        break
+
+                    prior_state = parse_stack[-1][0]
+                    goto_action = parse_table.get_action(prior_state, (True, nonterminal))
+                    parse_stack.append((goto_action[1], (nonterminal, self.tokens[stream_index][2]), value))
+
+            except ApplicationError as e:
+                raise SyntaxErr(f"Invalid syntax on line {self.tokens[stream_index][2]}!")
+
+        return ast_handler
+
+    def reduce_symbol(self, ast_handler, stack, production):
+        symbols = production.get_symbols()
+        nonterminal = production.get_nonterminal()
+
+        result = ast_handler.handleGrammar(nonterminal, stack[len(stack)-len(symbols):])
+
+        for _ in symbols:
+            stack.pop()
+
+        return nonterminal, result
+
+    def setup_parse_file_grammar(self):
+        self.grammar.insert_rule("DEFNS", [(True, "AMBIGUITY_CHECK"), (True, "SPACE"), (True, "DEFN")])
+        self.grammar.insert_rule("DEFNS", [(True, "DEFN")])
+        self.grammar.insert_rule("DEFN", [(True, "TOKEN"), (True, "SPACE"), (True, "DEFN")])
+        self.grammar.insert_rule("DEFN", [(True, "GRAMMAR"), (True, "SPACE"), (True, "DEFN")])
+        self.grammar.insert_rule("DEFN", [])
+
+        self.grammar.insert_rule("TOKEN", [(False, "varname"), (True, "SPACE"), (False, "tk_defn"), (True, "SPACE"), (False, "tk_regex"), (True, "SPACE"), (False, "semicolon")])
+
+        self.grammar.insert_rule("GRAMMAR", [(False, "varname"), (True, "SPACE"), (True, "TYPE"), (False, "scope_begin"), (True, "SPACE"), (True, "PRODUCTIONS"), (False, CODE_BLOCK_TK)])
+        self.grammar.insert_rule("GRAMMAR", [(False, "varname"), (True, "SPACE"), (True, "TYPE"), (False, "scope_begin"), (True, "SPACE"), (True, "PRODUCTIONS"), (False, "scope_end")])
+        self.grammar.insert_rule("PRODUCTIONS", [(True, "SYMBOL"), (False, "semicolon"), (True, "SPACE"), (True, "PRODUCTIONS")])
+        self.grammar.insert_rule("PRODUCTIONS", [(True, "SYMBOL"), (False, "semicolon"), (True, "SPACE")])
+        self.grammar.insert_rule("SYMBOL", [(False, "varname"), (True, "SPACE"), (True, "RENAME"), (True, "SYMBOL")])
+        self.grammar.insert_rule("SYMBOL", [(False, "varname"), (True, "SPACE"), (True, "RENAME")])
+
+        self.grammar.insert_rule("RENAME", [(False, "angle_open"), (False, "varname"), (False, "angle_close"), (True, "SPACE")])
+        self.grammar.insert_rule("RENAME", [])
+
+        self.grammar.insert_rule("TYPE", [(False, "paren_open"), (True, "SPACE"), (False, "varname"), (True, "SPACE"), (False, "paren_close"), (True, "SPACE")])
+        self.grammar.insert_rule("TYPE", [])
+
+        self.grammar.insert_rule("AMBIGUITY_CHECK", [(False, "varname"), (False, "space"), (False, "varname"), (False, "semicolon")])
+
+        self.grammar.insert_rule("SPACE", [(False, "space"), (True, "SPACE")])
+        self.grammar.insert_rule("SPACE", [])
+
+        self.grammar.eval_FIRST_set()
+
