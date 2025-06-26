@@ -6,6 +6,7 @@ class ParseFileAST:
         self.lexer_ambiguity = LEXER_AMBIGUITY_STRICT
         self.tokens = []
         self.grammars = dict()
+        self.header_code = ""
 
     def validate(self):
         token_set = set(["__epsilon__"])
@@ -39,10 +40,19 @@ class ParseFileAST:
     def get_grammars(self):
         return self.grammars
 
+    def get_header(self):
+        return self.header_code
+
     def handle_DEFNS(self, symbols):
         return 0
 
     def handle_DEFN(self, symbols):
+        return 0
+
+    def handle_HEADER(self, symbols):
+        if len(symbols) > 0:
+            self.header_code = symbols[0][1][0]
+
         return 0
 
     def handle_TOKEN(self, symbols):
@@ -116,6 +126,8 @@ class ParseFileAST:
             return self.handle_DEFNS(symbols)
         elif nonterminal == "DEFN":
             return self.handle_DEFN(symbols)
+        elif nonterminal == "HEADER":
+            return self.handle_HEADER(symbols)
         elif nonterminal == "TOKEN":
             return self.handle_TOKEN(symbols)
         elif nonterminal == "GRAMMAR":

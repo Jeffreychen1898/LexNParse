@@ -78,8 +78,9 @@ class ParseFileReader:
         tokens = ast.get_tokens()
         grammars = ast.get_grammars()
         ambig_priority = ast.get_ambiguity_priority()
+        header = ast.get_header()
 
-        return (ambig_priority, tokens, grammars)
+        return (ambig_priority, header, tokens, grammars)
 
     def assemble_code_blocks(self, tks):
         new_tokens = []
@@ -185,11 +186,14 @@ class ParseFileReader:
         return nonterminal, result
 
     def setup_parse_file_grammar(self):
-        self.grammar.insert_rule("DEFNS", [(True, "AMBIGUITY_CHECK"), (True, "SPACE"), (True, "DEFN")])
+        self.grammar.insert_rule("DEFNS", [(True, "AMBIGUITY_CHECK"), (True, "SPACE"), (True, "HEADER"), (True, "DEFN")])
         self.grammar.insert_rule("DEFNS", [(True, "DEFN")])
         self.grammar.insert_rule("DEFN", [(True, "TOKEN"), (True, "SPACE"), (True, "DEFN")])
         self.grammar.insert_rule("DEFN", [(True, "GRAMMAR"), (True, "SPACE"), (True, "DEFN")])
         self.grammar.insert_rule("DEFN", [])
+
+        self.grammar.insert_rule("HEADER", [(False, CODE_BLOCK_TK), (True, "SPACE")])
+        self.grammar.insert_rule("HEADER", [])
 
         self.grammar.insert_rule("TOKEN", [(False, "varname"), (True, "SPACE"), (False, "tk_defn"), (True, "SPACE"), (False, "tk_regex"), (True, "SPACE"), (False, "semicolon")])
 

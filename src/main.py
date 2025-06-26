@@ -20,7 +20,9 @@ def read_lex_file(filename):
 
 def main():
     parse_reader = ParseFileReader()
-    ambig_priority, tokens, grammars = parse_reader.read_file("./tests/test.txt")
+    ambig_priority, header, tokens, grammars = parse_reader.read_file("./tests/test.txt")
+
+    print(header)
 
     try:
         token_lexer = Lexer(tokens, ambig_resolution=ambig_priority)
