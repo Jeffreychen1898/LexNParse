@@ -63,7 +63,7 @@ class State:
         for state, bitmap in self.transitions_catalog.items():
             transitions.append(f"{bitmap} => {state}")
 
-        transitions_str = ",".join(transitions)
+        transitions_str = ", ".join(transitions)
         attribs_str = ",".join([ str(attrib) for attrib in list(self.attributes)])
         return f"[{transitions_str}] <{attribs_str}>"
 
