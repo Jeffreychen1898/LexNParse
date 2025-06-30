@@ -3,6 +3,7 @@ from utils import *
 class Grammar:
     def __init__(self):
         self.nonterminals = dict() # nonterminals, [rule]
+        self.id_lookup_table = dict()
 
         self.first_sets = dict()
         self.epsilon_set = set()
@@ -10,9 +11,22 @@ class Grammar:
     def insert_rule(self, nonterminal, rule):
         # rule: [(nonterminal?, symbol)]
         if nonterminal in self.nonterminals:
+            current_id = len(self.nonterminals[nonterminal])
+            self.id_lookup_table[(nonterminal, tuple(rule))] = current_id
             self.nonterminals[nonterminal].append(rule)
         else:
             self.nonterminals[nonterminal] = [rule]
+            self.id_lookup_table[(nonterminal, tuple(rule))] = 0
+
+    def lookup_rule_id(self, production):
+        nonterminal = production.get_nonterminal()
+        rule = production.get_symbols()
+
+        key = (nonterminal, tuple(rule))
+        if key not in self.id_lookup_table:
+            return None
+
+        return self.id_lookup_table[key]
 
     def eval_FIRST_set(self):
         self.first_sets = dict()

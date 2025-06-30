@@ -1,0 +1,120 @@
+// json lexer
+lexer_ambig_priority first;
+
+=>
+#include "ast.hpp"
+%}
+
+
+number: "[0-9]+(\.[0-9]+)?";
+string: "".*"";
+boolean: "true|false";
+arr_open: "\[";
+arr_close: "\]";
+obj_open: "\{";
+obj_close: "\}";
+colon: ":";
+space: " +";
+
+__start__ <JSON>;
+
+JSON (ASTJsonNode*) {%
+	ARRAY <arr>;
+	OBJECT <obj>;
+=>
+	ASTJsonNode* new_node = new ASTJsonNode();
+	new_node->type = ASTValueType::Json;
+	if (id == 0)
+		new_node->array = arr;
+	else
+		new_node->object = obj;
+
+	return new_node;
+%}
+
+ARRAY (ASTArrayNode*) {%
+	arr_open ARRAY_VALUE<val> SPACE arr_close;
+=>
+	ASTArrayNode* new_node = new ASTArrayNode();
+	new_node->type = ASTValueType::Array;
+	new_node->values = val;
+
+	return new_node;
+%}
+
+OBJECT (ASTObjectNode*) {%
+	obj_open OBJECT_VALUE <val> SPACE obj_close;
+=>
+	ASTObjectNode* new_node = new ASTObjectNode();
+	new_node->type = ASTValueType::Object;
+	new_node->values = val;
+
+	return new_node;
+%}
+
+OBJECT_VALUE (std::unordered_map<std::string, ASTValueNode*>*) {%
+	OBJECT_VALUE <prev> SPACE string <key> SPACE colon SPACE VALUE <value>;
+	__epsilon__;
+=>
+	if (id == 1)
+	{
+		std::unordered_map<std::string, ASTValueNode*>* new_node = new std::unordered_map<std::string, ASTValueNode*>();
+		return new_node;
+	}
+
+	prev->insert({ key, value });
+
+	return prev;
+%}
+
+ARRAY_VALUE (std::vector<ASTValueNode*>*) {%
+	ARRAY_VALUE <prev> SPACE VALUE <value>;
+	__epsilon__;
+=>
+	if (id == 1)
+		return new std::vector<ASTValueNode*>();
+
+	prev->push_back(value);
+
+	return prev;
+%}
+
+VALUE (ASTValueNode*) {%
+	ARRAY <arr>;
+	OBJECT <obj>;
+	boolean <boolean>;
+	number <number>;
+	string <string>;
+=>
+	switch (id)
+	{
+		case 0:
+			return arr;
+			break;
+		case 1:
+			return obj;
+			break;
+	}
+	ASTPrimNode* new_node = new ASTPrimNode();
+	new_node->type = ASTValueType::Prim;
+	switch (id)
+	{
+		case 2:
+			new_node->prim = boolean;
+			break;
+		case 3:
+			new_node->prim = number;
+			break;
+		case 4:
+			new_node->prim = string;
+			break;
+	}
+
+	return new_node;
+%}
+
+SPACE {%
+	space;
+	__epsilon__;
+%}
+

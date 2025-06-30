@@ -145,6 +145,52 @@ class NFA:
         for i, state in enumerate(self.states):
             print(f"state {i}: {state}")
 
+    def get_num_states(self):
+        return len(self.states)
+
+    def get_transition_table(self):
+        transition_table = []
+        for state in self.states:
+            transition_matrix = state.get_transition_matrix()
+            row = []
+            for i, entry in enumerate(transition_matrix):
+                if len(entry) > 1:
+                    raise InvalidDFA("Multiple paths detected. Only transition table of a DFA can be retrieved!")
+                if i == 95:
+                    if len(entry) > 0:
+                        raise InvalidDFA("Epsilon transition detected. Only transition table of a DFA can be retrieved!")
+                    else:
+                        continue
+
+                row.append(entry[0] if len(entry) > 0 else len(self.states))
+
+            transition_table.append(row)
+
+        return transition_table
+
+    def get_accept_states(self, ambig_priority):
+        accept_states = []
+        for i, state in enumerate(self.states):
+            state_attribs = state.get_attributes()
+            if len(state_attribs) == 0:
+                continue
+
+            if ambig_priority == "strict":
+                if len(state_attribs) > 1:
+                    raise InvalidParse("DFA contains ambiguity in accepting states!")
+
+                accept_states.append((i, state_attribs.pop()[0]))
+
+            elif ambig_priority == "first":
+                attrib = (i, min(state_attribs, key=lambda elem: elem[1])[0])
+                accept_states.append(attrib)
+
+            elif ambig_priority == "last":
+                attrib = (i, max(state_attribs, key=lambda elem: elem[1])[0])
+                accept_states.append(attrib)
+
+        return accept_states
+
     def gen_dfa(self):
         self.epsilon_closures = dict()
 

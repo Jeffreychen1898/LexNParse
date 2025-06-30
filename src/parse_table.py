@@ -1,3 +1,5 @@
+from tabulate import tabulate
+
 from utils import *
 
 class ParseTable:
@@ -39,10 +41,41 @@ class ParseTable:
 
         return self.productions[production]
 
-    def display(self):
-        for i, row in enumerate(self.table):
-            entry_str = []
-            for symbol, action in row.items():
-                entry_str.append(f"[{symbol[1]} {symbol[0]} => {action}]")
+    def get_productions(self):
+        return self.productions
 
-            print(f"state {i}: {', '.join(entry_str)}")
+    def get_action_table(self):
+        symbols_index = dict()
+        symbols_lst = []
+
+        for state in self.table:
+            for symbol in state.keys():
+                if symbol not in symbols_index:
+                    symbols_index[symbol] = None
+                    symbols_lst.append(symbol)
+
+        symbols_lst.sort(key=lambda e: e[1])
+        for i, symbol in enumerate(symbols_lst):
+            symbols_index[symbol] = i
+
+        action_table = []
+        for state in self.table:
+            row = [(None, 0) for _ in symbols_lst]
+            for symbol, action in state.items():
+                index_lookup = symbols_index[symbol]
+                row[index_lookup] = action
+
+            action_table.append(row)
+
+        return (symbols_lst, action_table)
+
+    def display(self):
+        print_table = []
+        for i, state in enumerate(self.table):
+            row = dict()
+            row["state"] = i
+            for symbol, action in state.items():
+                row[symbol[1]] = action[0] + str(action[1])
+            print_table.append(row)
+
+        print(tabulate(print_table, headers="keys", tablefmt="grid"))

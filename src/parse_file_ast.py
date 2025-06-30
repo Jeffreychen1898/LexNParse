@@ -7,6 +7,7 @@ class ParseFileAST:
         self.tokens = []
         self.grammars = dict()
         self.header_code = ""
+        self.start_grammar = ""
 
     def validate(self):
         token_set = set(["__epsilon__"])
@@ -31,6 +32,15 @@ class ParseFileAST:
                     if symbol[0] == "__epsilon__" and len(production) > 1:
                         raise GrammarError(f"A non-nullable production contains an __epsilon__ in grammar {grammar}")
 
+        if len(self.start_grammar) == 0:
+            raise UndefinedVariable("The starting grammar was not defined. Define using __start__ <MyStartingGrammar>!")
+
+        if self.start_grammar not in self.grammars:
+            raise GrammarError(f"Starting grammar {self.start_grammar} is not defined!")
+
+        if len(self.grammars[self.start_grammar][1]) == 0:
+            raise GrammarError(f"Starting grammar {self.start_grammar} does not contain return type!")
+
     def get_ambiguity_priority(self):
         return self.lexer_ambiguity
 
@@ -43,10 +53,24 @@ class ParseFileAST:
     def get_header(self):
         return self.header_code
 
+    def get_start_grammar(self):
+        return self.start_grammar
+
     def handle_DEFNS(self, symbols):
         return 0
 
     def handle_DEFN(self, symbols):
+        return 0
+
+    def handle_START(self, symbols):
+        if len(symbols) == 0:
+            return 0
+
+        if len(self.start_grammar) > 0:
+            raise DuplicateVariable("The starting grammar is already defined!")
+
+        self.start_grammar = symbols[3][1][0]
+
         return 0
 
     def handle_HEADER(self, symbols):
@@ -57,7 +81,7 @@ class ParseFileAST:
 
     def handle_TOKEN(self, symbols):
         token_name = symbols[0][1][0]
-        token_regex = symbols[4][1][0]
+        token_regex = symbols[4][1][0][1:-1]
 
         self.tokens.append((token_name, token_regex))
         return 0
@@ -106,7 +130,7 @@ class ParseFileAST:
         if len(symbols) == 0:
             return ""
 
-        return symbols[2][1][0]
+        return symbols[0][1][0]
 
     def handle_AMBIGUITY_CHECK(self, symbols):
         first_value = symbols[0][1][0]
@@ -144,5 +168,7 @@ class ParseFileAST:
             return self.handle_AMBIGUITY_CHECK(symbols)
         elif nonterminal == "SPACE":
             return self.handle_SPACE(symbols)
+        elif nonterminal == "START":
+            return self.handle_START(symbols)
         else:
             raise ApplicationError(f"{nonterminal} handling is not defined!")

@@ -16,15 +16,13 @@ class ParseFileReader:
             ("code_begin", "=>"),
 
             ("varname", "[a-zA-Z0-9_][a-zA-Z0-9_$]*"),
+            ("codetype", "\([^\(\)]+\)"),
 
             ("tk_defn", ":"),
             ("tk_regex", "\".*\""),
 
             ("angle_open", "<"),
             ("angle_close", ">"),
-
-            ("paren_open", "\("),
-            ("paren_close", "\)"),
 
             ("scope_begin", "{%"),
             ("scope_end", "%}"),
@@ -43,6 +41,7 @@ class ParseFileReader:
         self.tokens = []
 
         self.ambig_priority = LEXER_AMBIGUITY_STRICT
+        self.start_grammar = ""
 
     def get_ambig_priority(self):
         return self.ambig_priority
@@ -80,7 +79,12 @@ class ParseFileReader:
         ambig_priority = ast.get_ambiguity_priority()
         header = ast.get_header()
 
+        self.start_grammar = ast.get_start_grammar()
+
         return (ambig_priority, header, tokens, grammars)
+
+    def get_start_grammar(self):
+        return self.start_grammar
 
     def assemble_code_blocks(self, tks):
         new_tokens = []
@@ -189,6 +193,7 @@ class ParseFileReader:
         self.grammar.insert_rule("DEFNS", [(True, "AMBIGUITY_CHECK"), (True, "SPACE"), (True, "HEADER"), (True, "DEFN")])
         self.grammar.insert_rule("DEFNS", [(True, "DEFN")])
         self.grammar.insert_rule("DEFN", [(True, "TOKEN"), (True, "SPACE"), (True, "DEFN")])
+        self.grammar.insert_rule("DEFN", [(True, "START"), (True, "SPACE"), (True, "DEFN")])
         self.grammar.insert_rule("DEFN", [(True, "GRAMMAR"), (True, "SPACE"), (True, "DEFN")])
         self.grammar.insert_rule("DEFN", [])
 
@@ -207,13 +212,14 @@ class ParseFileReader:
         self.grammar.insert_rule("RENAME", [(False, "angle_open"), (False, "varname"), (False, "angle_close"), (True, "SPACE")])
         self.grammar.insert_rule("RENAME", [])
 
-        self.grammar.insert_rule("TYPE", [(False, "paren_open"), (True, "SPACE"), (False, "varname"), (True, "SPACE"), (False, "paren_close"), (True, "SPACE")])
+        #self.grammar.insert_rule("TYPE", [(False, "paren_open"), (True, "SPACE"), (False, "varname"), (True, "SPACE"), (False, "paren_close"), (True, "SPACE")])
+        self.grammar.insert_rule("TYPE", [(False, "codetype"), (True, "SPACE")])
         self.grammar.insert_rule("TYPE", [])
 
         self.grammar.insert_rule("AMBIGUITY_CHECK", [(False, "varname"), (False, "space"), (False, "varname"), (False, "semicolon")])
+        self.grammar.insert_rule("START", [(False, "varname"), (True, "SPACE"), (False, "angle_open"), (False, "varname"), (False, "angle_close"), (True, "SPACE"), (False, "semicolon")])
 
         self.grammar.insert_rule("SPACE", [(False, "space"), (True, "SPACE")])
         self.grammar.insert_rule("SPACE", [])
 
         self.grammar.eval_FIRST_set()
-
