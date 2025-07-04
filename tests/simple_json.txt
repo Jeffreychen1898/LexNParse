@@ -1,5 +1,5 @@
 // json lexer
-lexer_ambig_priority first;
+__lexer_ambig_priority__ first;
 
 =>
 #include "ast.hpp"
@@ -16,7 +16,8 @@ obj_close: "\}";
 colon: ":";
 space: " +";
 
-__start__ <JSON>;
+__extern__ endline;
+__start__ JSON;
 
 JSON (ASTJsonNode*) {%
 	ARRAY <arr>;

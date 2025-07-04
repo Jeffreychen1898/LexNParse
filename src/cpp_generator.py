@@ -3,10 +3,12 @@ from jinja2 import Environment, FileSystemLoader
 # really ugly code because jinja code looks convoluted af
 # TODO: switch to Mako
 class CppGenerator:
-    def __init__(self, header, dfa, ambig_priority, grammar_info, parse_table):
+    def __init__(self, header, externs, dfa, ambig_priority, grammar_info, parse_table):
         self.header = header
         self.lexer_dfa = dfa
         self.ambig_priority = ambig_priority
+
+        self.externs = externs
 
         self.start_grammar, self.grammar_info, self.grammar = grammar_info
 
@@ -102,9 +104,11 @@ class CppGenerator:
 
         output = template.render(
             header=self.header,
+            externs=self.externs,
             symbols=token_symbols,
             symbols_count=len(self.symbols),
-            start_grammar_dtype=start_grammar_dtype
+            start_grammar_dtype=start_grammar_dtype,
+            len=len
         )
 
         with open(dst, "w") as file:

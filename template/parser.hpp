@@ -18,6 +18,7 @@ enum class LexNParseTokenType : uint32_t
 	obj_open = 13,
 	space = 14,
 	string = 15,
+	endline = 17,
 	__null__ = 16
 };
 

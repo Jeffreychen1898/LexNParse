@@ -9,6 +9,9 @@ enum class LexNParseTokenType : uint32_t
 {%- for symbol in symbols %}
 	{{ symbol[0] }} = {{ symbol[1] }},
 {%- endfor %}
+{%- for extern in externs %}
+	{{ extern }} = {{ symbols_count + loop.index0 + 1 }},
+{%- endfor %}
 	__null__ = {{ symbols_count }}
 };
 

@@ -15,6 +15,9 @@ class ParseFileReader:
 
             ("code_begin", "=>"),
 
+            ("extern", "__extern__"),
+            ("start", "__start__"),
+            ("ambig_priority", "__lexer_ambig_priority__"),
             ("varname", "[a-zA-Z0-9_][a-zA-Z0-9_$]*"),
             ("codetype", "\([^\(\)]+\)"),
 
@@ -74,14 +77,15 @@ class ParseFileReader:
         ast = self.read_token_stream()
         ast.validate()
 
-        tokens = ast.get_tokens()
-        grammars = ast.get_grammars()
-        ambig_priority = ast.get_ambiguity_priority()
-        header = ast.get_header()
+        # tokens = ast.get_tokens()
+        # grammars = ast.get_grammars()
+        # ambig_priority = ast.get_ambiguity_priority()
+        # header = ast.get_header()
 
         self.start_grammar = ast.get_start_grammar()
 
-        return (ambig_priority, header, tokens, grammars)
+        return ast
+        #return (ambig_priority, header, tokens, grammars)
 
     def get_start_grammar(self):
         return self.start_grammar
@@ -192,6 +196,7 @@ class ParseFileReader:
     def setup_parse_file_grammar(self):
         self.grammar.insert_rule("DEFNS", [(True, "AMBIGUITY_CHECK"), (True, "SPACE"), (True, "HEADER"), (True, "DEFN")])
         self.grammar.insert_rule("DEFNS", [(True, "DEFN")])
+        self.grammar.insert_rule("DEFN", [(True, "EXTERN"), (True, "SPACE"), (True, "DEFN")])
         self.grammar.insert_rule("DEFN", [(True, "TOKEN"), (True, "SPACE"), (True, "DEFN")])
         self.grammar.insert_rule("DEFN", [(True, "START"), (True, "SPACE"), (True, "DEFN")])
         self.grammar.insert_rule("DEFN", [(True, "GRAMMAR"), (True, "SPACE"), (True, "DEFN")])
@@ -199,6 +204,8 @@ class ParseFileReader:
 
         self.grammar.insert_rule("HEADER", [(False, CODE_BLOCK_TK), (True, "SPACE")])
         self.grammar.insert_rule("HEADER", [])
+
+        self.grammar.insert_rule("EXTERN", [(False, "extern"), (True, "SPACE"), (False, "varname"), (True, "SPACE"), (False, "semicolon")])
 
         self.grammar.insert_rule("TOKEN", [(False, "varname"), (True, "SPACE"), (False, "tk_defn"), (True, "SPACE"), (False, "tk_regex"), (True, "SPACE"), (False, "semicolon")])
 
@@ -216,8 +223,8 @@ class ParseFileReader:
         self.grammar.insert_rule("TYPE", [(False, "codetype"), (True, "SPACE")])
         self.grammar.insert_rule("TYPE", [])
 
-        self.grammar.insert_rule("AMBIGUITY_CHECK", [(False, "varname"), (False, "space"), (False, "varname"), (False, "semicolon")])
-        self.grammar.insert_rule("START", [(False, "varname"), (True, "SPACE"), (False, "angle_open"), (False, "varname"), (False, "angle_close"), (True, "SPACE"), (False, "semicolon")])
+        self.grammar.insert_rule("AMBIGUITY_CHECK", [(False, "ambig_priority"), (False, "space"), (False, "varname"), (False, "semicolon")])
+        self.grammar.insert_rule("START", [(False, "start"), (True, "SPACE"), (False, "varname"), (True, "SPACE"), (False, "semicolon")])
 
         self.grammar.insert_rule("SPACE", [(False, "space"), (True, "SPACE")])
         self.grammar.insert_rule("SPACE", [])

@@ -10,7 +10,13 @@ from parse_file_reader import ParseFileReader
 
 def main():
     parse_reader = ParseFileReader()
-    ambig_priority, header, tokens, grammars = parse_reader.read_file("./tests/basic_lex.txt")
+    #ambig_priority, header, tokens, grammars = parse_reader.read_file("./tests/basic_lex.txt")
+    parse_file_ast = parse_reader.read_file("./tests/simple_json.txt")
+    ambig_priority = parse_file_ast.get_ambiguity_priority()
+    header = parse_file_ast.get_header()
+    tokens = parse_file_ast.get_tokens()
+    grammars = parse_file_ast.get_grammars()
+    externs = parse_file_ast.get_externs()
 
     #print(header)
     token_lexer = None
@@ -52,7 +58,14 @@ def main():
     parser = ParserDFA(file_grammar, parse_reader.get_start_grammar())
     action_table = parser.get_table().get_action_table()
 
-    generator = CppGenerator(header, token_lexer.get_dfa(), ambig_priority, (parse_reader.get_start_grammar(), grammars, file_grammar), parser.get_table())
+    generator = CppGenerator(
+        header,
+        externs,
+        token_lexer.get_dfa(),
+        ambig_priority,
+        (parse_reader.get_start_grammar(), grammars, file_grammar),
+        parser.get_table()
+    )
 
     generator.generate(
         "./template/template.hpp",

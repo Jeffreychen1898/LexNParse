@@ -1,4 +1,4 @@
-TARGET := testTemplate
+TARGET := TestParser
 
 CXX := g++
 CXXFlags := -std=c++17 -Wall

@@ -8,9 +8,11 @@ class ParseFileAST:
         self.grammars = dict()
         self.header_code = ""
         self.start_grammar = ""
+        self.externs = set()
 
     def validate(self):
         token_set = set(["__epsilon__"])
+        token_set.update(self.externs)
         for tk in self.tokens:
             if tk[0] in token_set:
                 raise DuplicateVariable(f"Token or grammar {tk[0]} is already defined!")
@@ -47,6 +49,9 @@ class ParseFileAST:
     def get_tokens(self):
         return self.tokens
 
+    def get_externs(self):
+        return self.externs
+
     def get_grammars(self):
         return self.grammars
 
@@ -63,19 +68,23 @@ class ParseFileAST:
         return 0
 
     def handle_START(self, symbols):
-        if len(symbols) == 0:
-            return 0
-
         if len(self.start_grammar) > 0:
             raise DuplicateVariable("The starting grammar is already defined!")
 
-        self.start_grammar = symbols[3][1][0]
+        self.start_grammar = symbols[2][1][0]
 
         return 0
 
     def handle_HEADER(self, symbols):
         if len(symbols) > 0:
             self.header_code = symbols[0][1][0]
+
+        return 0
+
+    def handle_EXTERN(self, symbols):
+        token_name = symbols[2][1][0]
+
+        self.externs.add(token_name)
 
         return 0
 
@@ -133,13 +142,7 @@ class ParseFileAST:
         return symbols[0][1][0]
 
     def handle_AMBIGUITY_CHECK(self, symbols):
-        first_value = symbols[0][1][0]
-        second_value = symbols[2][1][0]
-        if first_value != "lexer_ambig_priority":
-            linenum = symbols[0][1][2]
-            raise SyntaxErr(f"Lexer ambiguity priority must be prepended with 'lexer_ambig_priority' on line {linenum}")
-
-        self.lexer_ambiguity = second_value
+        self.lexer_ambiguity = symbols[2][1][0]
         return 0
 
     def handle_SPACE(self, symbols):
@@ -152,6 +155,8 @@ class ParseFileAST:
             return self.handle_DEFN(symbols)
         elif nonterminal == "HEADER":
             return self.handle_HEADER(symbols)
+        elif nonterminal == "EXTERN":
+            return self.handle_EXTERN(symbols)
         elif nonterminal == "TOKEN":
             return self.handle_TOKEN(symbols)
         elif nonterminal == "GRAMMAR":
