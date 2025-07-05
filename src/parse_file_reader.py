@@ -77,15 +77,9 @@ class ParseFileReader:
         ast = self.read_token_stream()
         ast.validate()
 
-        # tokens = ast.get_tokens()
-        # grammars = ast.get_grammars()
-        # ambig_priority = ast.get_ambiguity_priority()
-        # header = ast.get_header()
-
         self.start_grammar = ast.get_start_grammar()
 
         return ast
-        #return (ambig_priority, header, tokens, grammars)
 
     def get_start_grammar(self):
         return self.start_grammar

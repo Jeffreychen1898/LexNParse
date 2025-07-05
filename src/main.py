@@ -8,70 +8,27 @@ from parse_file_reader import ParseFileReader
 
 # implement parser_table.get_action_table()
 
+from cli import CLI
+
 def main():
-    parse_reader = ParseFileReader()
-    #ambig_priority, header, tokens, grammars = parse_reader.read_file("./tests/basic_lex.txt")
-    parse_file_ast = parse_reader.read_file("./tests/simple_json.txt")
-    ambig_priority = parse_file_ast.get_ambiguity_priority()
-    header = parse_file_ast.get_header()
-    tokens = parse_file_ast.get_tokens()
-    grammars = parse_file_ast.get_grammars()
-    externs = parse_file_ast.get_externs()
-
-    #print(header)
-    token_lexer = None
-
     try:
-        token_lexer = Lexer(tokens, ambig_resolution=ambig_priority)
-        """transition_table = token_lexer.get_dfa().get_transition_table()
-        print(token_lexer.get_dfa().get_num_states())
-        print(len(transition_table[0]))
-        print(transition_table)"""
+        cli = CLI()
+        cli.parse_arguments()
+    except FileNotFoundError as e:
+        print(f"File Not Found Error: {e}")
+    except SyntaxErr as e:
+        print(f"Syntax Error: {e}")
+    except DuplicateVariable as e:
+        print(f"Duplicate Variable Error: {e}")
+    except UndefinedVariable as e:
+        print(f"Undefined Variable Error: {e}")
+    except GrammarError as e:
+        print(f"Grammar Error: {e}")
     except InvalidParse as e:
-        print(e)
-        raise InvalidParse(e)
-
-    for tk in tokens:
-        pass
-        #print(tk)
-
-    print()
-    for grammar, info in grammars.items():
-        pass
-        #print(f"{grammar} => {info[2]}")
-        #print(f"\t{info[0]}")
-        #print(f"\t== CODE BLOCK ==")
-        #print(f"{info[1]}")
-
-    file_grammar = Grammar()
-    for grammar, info in grammars.items():
-        for rule in info[0]:
-            grammar_symbols = []
-            for symbol, _ in rule:
-                if symbol == "__epsilon__":
-                    break
-                grammar_symbols.append((symbol in grammars, symbol))
-
-            file_grammar.insert_rule(grammar, grammar_symbols)
-
-    file_grammar.eval_FIRST_set()
-    parser = ParserDFA(file_grammar, parse_reader.get_start_grammar())
-    action_table = parser.get_table().get_action_table()
-
-    generator = CppGenerator(
-        header,
-        externs,
-        token_lexer.get_dfa(),
-        ambig_priority,
-        (parse_reader.get_start_grammar(), grammars, file_grammar),
-        parser.get_table()
-    )
-
-    generator.generate(
-        "./template/template.hpp",
-        "./template/template.cpp",
-        "./template/parser.hpp",
-        "./template/parser.cpp"
-    )
+        print(f"Invalid Parse Error: {e}")
+    except InvalidDFA as e:
+        print(f"Invalid DFA Error: {e}")
+    except ApplicationError as e:
+        print(f"Application Error: {e}")
 
 main()

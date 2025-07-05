@@ -1,0 +1,52 @@
+lexer_ambig_priority first;
+
+=>
+#include <iostream>
+%}
+
+// token section
+number: 
+	"[0-9]*\.[0-9]*"; 
+  variable : "[a-zA-Z_$][a-zA-Z0-9_$]*";
+operation : "*|/|\+|\-|";
+space : " *";
+equal : "=";
+ 
+/*
+Below are the gra[mmar sec]tion
+*/
+//g{rammar se}ction
+PROG {% 
+	STATEMENT <statement>;
+=>
+	return statement
+%}
+
+STATEMENT ( MyNode) {% 
+	EQUATION STATEMENT;
+	__epsilon__;
+=>
+	if (production == 1)
+		return nullptr;
+
+	StatementNode* node = new StatementNode()
+	node->left = equation
+	node->right = statement
+	return node
+%}
+
+EQUATION {%
+	variable SPACE equal SPACE EXPR;
+%}
+
+EXPR {%
+	number SPACE 
+		operation SPACE EXPR; 
+
+	number;
+%}
+
+SPACE {% 
+	space;
+	__epsilon__;
+%}
