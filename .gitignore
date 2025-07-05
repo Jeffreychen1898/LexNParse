@@ -1,4 +1,5 @@
 .DS_Store
+template/TestParser
 
 # gitignore found in repository: https://github.com/github/gitignore/blob/main/Python.gitignore
 # Byte-compiled / optimized / DLL files
