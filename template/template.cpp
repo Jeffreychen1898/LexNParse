@@ -92,7 +92,7 @@ static {{ info[2][1:-1].strip() }} LexNParseResolve_{{ nonterminal }}(std::stack
 }
 {% endfor %}
 
-{{ resolvable_grammars[start_grammar][2][1:-1].strip() }} LexNParseParse(std::vector<LexNParseToken>& stream)
+LexNParseResult LexNParseParse(std::vector<LexNParseToken>& stream)
 {
     std::stack<ParseStackValue> parse_stack;
     parse_stack.push({ {{ len(symbols_index) }}, 0, 0, 0, nullptr });
@@ -110,7 +110,8 @@ static {{ info[2][1:-1].strip() }} LexNParseResolve_{{ nonterminal }}(std::stack
         uint32_t current_state = parse_stack.top().state;
         LexNParseToken& tk = stream_index < stream.size() ? stream[stream_index] : terminal_tk;
 
-        // TODO: error checking if tk is null or terminal and not == end of stream
+		if ((tk.type == LexNParseTokenType::__null__ || tk.type == LexNParseTokenType::__terminal__) && stream_index != stream.size())
+			return { { false, LexNParseErrorCode::IncompleteParse, tk.lineNumber, tk.indexNumber }, nullptr };
 
         uint32_t symbol = static_cast<uint32_t>(tk.type);
         uint8_t action_type = parse_table_action[current_state][symbol];
@@ -119,8 +120,7 @@ static {{ info[2][1:-1].strip() }} LexNParseResolve_{{ nonterminal }}(std::stack
         switch (action_type)
         {
             case 0:
-                std::cout << "rejected\n";
-                return nullptr;
+                return { { false, LexNParseErrorCode::InvalidParse, tk.lineNumber, tk.indexNumber }, nullptr };
             case 1:
                 parse_stack.push({ symbol, tk.lineNumber, tk.indexNumber, action_value, &tk.token });
                 ++ stream_index;
@@ -159,7 +159,7 @@ static {{ info[2][1:-1].strip() }} LexNParseResolve_{{ nonterminal }}(std::stack
 
         // accept state
         if (nonterminal == {{ len(symbols_index) }})
-            return static_cast<{{ resolvable_grammars[start_grammar][2][1:-1].strip() }}>(value);
+            return { { true, LexNParseErrorCode::None, 0, 0 }, static_cast<{{ resolvable_grammars[start_grammar][2][1:-1].strip() }}>(value) };
 
         uint32_t prior_state = parse_stack.top().state;
         uint32_t goto_state = parse_table_value[prior_state][nonterminal];
@@ -167,14 +167,11 @@ static {{ info[2][1:-1].strip() }} LexNParseResolve_{{ nonterminal }}(std::stack
         parse_stack.push({ nonterminal, 0, 0, goto_state, value });
 	}
 
-	return nullptr;
+    return { { false, LexNParseErrorCode::InvalidParse, 0, 0 }, nullptr };
 }
 
-std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, uint32_t lineNumber)
+LexNParseStatus LexNParseTokenize(std::vector<LexNParseToken>& tokens, const std::string& input, uint32_t lineNumber)
 {
-
-    std::vector<LexNParseToken> tokens;
-
     uint32_t current_state = 0;
     uint32_t prev_accept_index = 0;
     LexNParseToken prev_accept_token;
@@ -187,7 +184,7 @@ std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, uint32_t
     {
         char current_input = input[current_index];
         if (current_input < 32 || current_input > 126)
-            std::cout << "Invalid input character\n";
+			return { false, LexNParseErrorCode::InvalidCharacter, lineNumber, current_index };
 
         uint32_t input_number = static_cast<uint32_t>(current_input) - 32;
         current_state = tokenize_dfa[current_state][input_number];
@@ -208,10 +205,7 @@ std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, uint32_t
         if (current_state == {{ tokenizer_num_states }} || (token_type == LexNParseTokenType::__null__ && current_index == input.size() - 1))
         {
             if (prev_accept_token.type == LexNParseTokenType::__null__)
-            {
-                std::cout << "Throw invalid token error: line number, column number\n";
-                exit(1);
-            }
+				return { false, LexNParseErrorCode::InvalidToken, lineNumber, current_index };
 
             tokens.push_back(prev_accept_token);
 
@@ -238,9 +232,9 @@ std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, uint32_t
     }
 
     if (prev_accept_token.type == LexNParseTokenType::__null__ || prev_accept_index != input.size() - 1)
-        std::cout << "throw invalid token error: line number, column number";
+		return { false, LexNParseErrorCode::InvalidCharacter, lineNumber, current_index };
 
     tokens.push_back(prev_accept_token);
 
-    return tokens;
+	return { true, LexNParseErrorCode::None, 0, 0 };
 }

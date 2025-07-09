@@ -1,4 +1,4 @@
-#include "./template/parser.hpp"
+#include "./parser.hpp"
 
 struct ParseStackValue
 {
@@ -35,52 +35,52 @@ static uint8_t parse_table_action[23][16] = {
 	{0, 3, 0, 3, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0},
 	{2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 3, 0, 0, 0, 0, 2, 2, 2, 0, 2, 0, 2, 2, 2},
 	{0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 2},
+	{0, 0, 3, 0, 0, 0, 0, 2, 2, 2, 0, 2, 0, 2, 2, 2},
+	{0, 0, 0, 0, 0, 3, 0, 2, 2, 2, 0, 2, 0, 2, 1, 2},
+	{0, 3, 0, 3, 0, 0, 3, 1, 1, 1, 0, 1, 0, 1, 0, 1},
+	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 2},
+	{2, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
+	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 0, 2, 2, 2},
+	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
+	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
+	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
+	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
+	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
 	{0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 2, 0, 1, 2},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1},
-	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 2},
-	{0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0},
 	{2, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
+	{0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 2, 0, 0, 0, 1, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 3, 0, 0, 2, 2, 0, 2, 0, 2, 1, 2},
 	{0, 3, 0, 3, 0, 0, 3, 0, 1, 1, 0, 1, 0, 1, 0, 1},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 2},
-	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
-	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
-	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
-	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
-	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
-	{0, 0, 0, 0, 0, 3, 0, 2, 2, 2, 0, 2, 0, 2, 1, 2},
-	{0, 3, 0, 3, 0, 0, 3, 1, 1, 1, 0, 1, 0, 1, 0, 1},
-	{0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 0, 2, 2, 2},
-	{2, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 2, 2, 2, 2, 2},
 };
 
 static uint32_t parse_table_value[23][16] = {
-	{0, 2, 0, 1, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4, 0, 0},
+	{0, 1, 0, 2, 0, 0, 0, 0, 4, 0, 0, 0, 0, 3, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 19, 0, 0, 0, 0, 2, 2, 2, 0, 2, 0, 2, 2, 2},
-	{0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 3},
-	{0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 4, 0, 7, 4},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 8},
+	{0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 2},
+	{0, 0, 5, 0, 0, 0, 0, 3, 3, 3, 0, 3, 0, 3, 3, 3},
+	{0, 0, 0, 0, 0, 6, 0, 4, 4, 4, 0, 4, 0, 4, 7, 4},
+	{0, 11, 0, 12, 0, 0, 9, 8, 4, 14, 0, 13, 0, 3, 0, 10},
 	{0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 0, 5},
-	{0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 4, 0, 0, 0, 7, 0},
 	{6, 0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 6, 6, 6, 6, 6},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 12, 0, 0, 4, 4, 0, 4, 0, 4, 7, 4},
-	{0, 17, 0, 16, 0, 0, 13, 0, 3, 18, 0, 14, 0, 4, 0, 15},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 7, 7},
+	{0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 0, 7, 0, 7, 7, 7},
 	{0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 0, 8, 8, 8, 8, 8},
 	{0, 0, 0, 0, 0, 0, 0, 9, 9, 9, 0, 9, 9, 9, 9, 9},
 	{0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 0, 10, 10, 10, 10, 10},
 	{0, 0, 0, 0, 0, 0, 0, 11, 11, 11, 0, 11, 11, 11, 11, 11},
 	{0, 0, 0, 0, 0, 0, 0, 12, 12, 12, 0, 12, 12, 12, 12, 12},
-	{0, 0, 0, 0, 0, 20, 0, 4, 4, 4, 0, 4, 0, 4, 7, 4},
-	{0, 17, 0, 16, 0, 0, 21, 22, 3, 18, 0, 14, 0, 4, 0, 15},
-	{0, 0, 0, 0, 0, 0, 0, 13, 13, 13, 0, 13, 0, 13, 13, 13},
-	{14, 0, 0, 0, 0, 0, 0, 14, 14, 14, 0, 14, 14, 14, 14, 14},
+	{0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 4, 0, 7, 4},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 0, 0, 18},
+	{13, 0, 0, 0, 0, 0, 0, 13, 13, 13, 0, 13, 13, 13, 13, 13},
+	{0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 4, 0, 0, 0, 7, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 21, 0, 0, 4, 4, 0, 4, 0, 4, 7, 4},
+	{0, 11, 0, 12, 0, 0, 22, 0, 4, 14, 0, 13, 0, 3, 0, 10},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 0, 14, 14},
 };
 static ASTJsonNode* LexNParseResolve_JSON(std::stack<ParseStackValue>& parse_stack, uint32_t len, uint32_t id)
 {
@@ -421,7 +421,7 @@ static ASTValueNode* LexNParseResolve_VALUE(std::stack<ParseStackValue>& parse_s
 }
 
 
-ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream)
+LexNParseResult LexNParseParse(std::vector<LexNParseToken>& stream)
 {
     std::stack<ParseStackValue> parse_stack;
     parse_stack.push({ 16, 0, 0, 0, nullptr });
@@ -439,7 +439,8 @@ ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream)
         uint32_t current_state = parse_stack.top().state;
         LexNParseToken& tk = stream_index < stream.size() ? stream[stream_index] : terminal_tk;
 
-        // TODO: error checking if tk is null or terminal and not == end of stream
+		if ((tk.type == LexNParseTokenType::__null__ || tk.type == LexNParseTokenType::__terminal__) && stream_index != stream.size())
+			return { { false, LexNParseErrorCode::IncompleteParse, tk.lineNumber, tk.indexNumber }, nullptr };
 
         uint32_t symbol = static_cast<uint32_t>(tk.type);
         uint8_t action_type = parse_table_action[current_state][symbol];
@@ -448,8 +449,7 @@ ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream)
         switch (action_type)
         {
             case 0:
-                std::cout << "rejected\n";
-                return nullptr;
+                return { { false, LexNParseErrorCode::InvalidParse, tk.lineNumber, tk.indexNumber }, nullptr };
             case 1:
                 parse_stack.push({ symbol, tk.lineNumber, tk.indexNumber, action_value, &tk.token });
                 ++ stream_index;
@@ -465,19 +465,19 @@ ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream)
 		{
 			case 0:
 				nonterminal = 16;
-				value = static_cast<void*>(LexNParseResolve_JSON(parse_stack, 1, 1));
+				value = static_cast<void*>(LexNParseResolve_JSON(parse_stack, 1, 0));
 				break;
 			case 1:
 				nonterminal = 16;
-				value = static_cast<void*>(LexNParseResolve_JSON(parse_stack, 1, 0));
+				value = static_cast<void*>(LexNParseResolve_JSON(parse_stack, 1, 1));
 				break;
 			case 2:
-				nonterminal = 2;
-				value = static_cast<void*>(LexNParseResolve_ARRAY_VALUE(parse_stack, 0, 1));
-				break;
-			case 3:
 				nonterminal = 4;
 				value = static_cast<void*>(LexNParseResolve_OBJECT_VALUE(parse_stack, 0, 1));
+				break;
+			case 3:
+				nonterminal = 2;
+				value = static_cast<void*>(LexNParseResolve_ARRAY_VALUE(parse_stack, 0, 1));
 				break;
 			case 4:
 				nonterminal = 5;
@@ -490,20 +490,20 @@ ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream)
 				value = nullptr;
 				break;
 			case 6:
-				nonterminal = 3;
-				value = static_cast<void*>(LexNParseResolve_OBJECT(parse_stack, 4, 0));
+				nonterminal = 1;
+				value = static_cast<void*>(LexNParseResolve_ARRAY(parse_stack, 4, 0));
 				break;
 			case 7:
-				nonterminal = 4;
-				value = static_cast<void*>(LexNParseResolve_OBJECT_VALUE(parse_stack, 7, 0));
+				nonterminal = 2;
+				value = static_cast<void*>(LexNParseResolve_ARRAY_VALUE(parse_stack, 3, 0));
 				break;
 			case 8:
 				nonterminal = 6;
-				value = static_cast<void*>(LexNParseResolve_VALUE(parse_stack, 1, 3));
+				value = static_cast<void*>(LexNParseResolve_VALUE(parse_stack, 1, 4));
 				break;
 			case 9:
 				nonterminal = 6;
-				value = static_cast<void*>(LexNParseResolve_VALUE(parse_stack, 1, 4));
+				value = static_cast<void*>(LexNParseResolve_VALUE(parse_stack, 1, 0));
 				break;
 			case 10:
 				nonterminal = 6;
@@ -511,19 +511,19 @@ ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream)
 				break;
 			case 11:
 				nonterminal = 6;
-				value = static_cast<void*>(LexNParseResolve_VALUE(parse_stack, 1, 0));
+				value = static_cast<void*>(LexNParseResolve_VALUE(parse_stack, 1, 3));
 				break;
 			case 12:
 				nonterminal = 6;
 				value = static_cast<void*>(LexNParseResolve_VALUE(parse_stack, 1, 2));
 				break;
 			case 13:
-				nonterminal = 2;
-				value = static_cast<void*>(LexNParseResolve_ARRAY_VALUE(parse_stack, 3, 0));
+				nonterminal = 3;
+				value = static_cast<void*>(LexNParseResolve_OBJECT(parse_stack, 4, 0));
 				break;
 			case 14:
-				nonterminal = 1;
-				value = static_cast<void*>(LexNParseResolve_ARRAY(parse_stack, 4, 0));
+				nonterminal = 4;
+				value = static_cast<void*>(LexNParseResolve_OBJECT_VALUE(parse_stack, 7, 0));
 				break;
 			default:
 				break;
@@ -531,7 +531,7 @@ ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream)
 
         // accept state
         if (nonterminal == 16)
-            return static_cast<ASTJsonNode*>(value);
+            return { { true, LexNParseErrorCode::None, 0, 0 }, static_cast<ASTJsonNode*>(value) };
 
         uint32_t prior_state = parse_stack.top().state;
         uint32_t goto_state = parse_table_value[prior_state][nonterminal];
@@ -539,14 +539,11 @@ ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream)
         parse_stack.push({ nonterminal, 0, 0, goto_state, value });
 	}
 
-	return nullptr;
+    return { { false, LexNParseErrorCode::InvalidParse, 0, 0 }, nullptr };
 }
 
-std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, uint32_t lineNumber)
+LexNParseStatus LexNParseTokenize(std::vector<LexNParseToken>& tokens, const std::string& input, uint32_t lineNumber)
 {
-
-    std::vector<LexNParseToken> tokens;
-
     uint32_t current_state = 0;
     uint32_t prev_accept_index = 0;
     LexNParseToken prev_accept_token;
@@ -559,7 +556,7 @@ std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, uint32_t
     {
         char current_input = input[current_index];
         if (current_input < 32 || current_input > 126)
-            std::cout << "Invalid input character\n";
+			return { false, LexNParseErrorCode::InvalidCharacter, lineNumber, current_index };
 
         uint32_t input_number = static_cast<uint32_t>(current_input) - 32;
         current_state = tokenize_dfa[current_state][input_number];
@@ -605,10 +602,7 @@ std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, uint32_t
         if (current_state == 19 || (token_type == LexNParseTokenType::__null__ && current_index == input.size() - 1))
         {
             if (prev_accept_token.type == LexNParseTokenType::__null__)
-            {
-                std::cout << "Throw invalid token error: line number, column number\n";
-                exit(1);
-            }
+				return { false, LexNParseErrorCode::InvalidToken, lineNumber, current_index };
 
             tokens.push_back(prev_accept_token);
 
@@ -635,9 +629,9 @@ std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, uint32_t
     }
 
     if (prev_accept_token.type == LexNParseTokenType::__null__ || prev_accept_index != input.size() - 1)
-        std::cout << "throw invalid token error: line number, column number";
+		return { false, LexNParseErrorCode::InvalidCharacter, lineNumber, current_index };
 
     tokens.push_back(prev_accept_token);
 
-    return tokens;
+	return { true, LexNParseErrorCode::None, 0, 0 };
 }

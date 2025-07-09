@@ -22,6 +22,15 @@ enum class LexNParseTokenType : uint32_t
 	__null__ = 16
 };
 
+enum class LexNParseErrorCode : uint8_t
+{
+	None,
+	InvalidCharacter,
+	InvalidToken,
+	IncompleteParse,
+	InvalidParse
+};
+
 struct LexNParseToken
 {
     LexNParseTokenType type = LexNParseTokenType::__null__;
@@ -30,5 +39,19 @@ struct LexNParseToken
     std::string token = "";
 };
 
-ASTJsonNode* LexNParseParse(std::vector<LexNParseToken>& stream);
-std::vector<LexNParseToken> LexNParseTokenize(const std::string& input, unsigned int lineNumber);
+struct LexNParseStatus
+{
+	bool complete = false;
+	LexNParseErrorCode errorCode;
+	uint32_t lineNumber;
+	uint32_t indexNumber;
+};
+
+struct LexNParseResult
+{
+	LexNParseStatus status;
+	ASTJsonNode* value;
+};
+
+LexNParseResult LexNParseParse(std::vector<LexNParseToken>& stream);
+LexNParseStatus LexNParseTokenize(std::vector<LexNParseToken>& tokens, const std::string& input, unsigned int lineNumber);

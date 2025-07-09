@@ -145,7 +145,15 @@ int main()
     std::vector<LexNParseToken> total_tk;
     for (int i=0;i<17;++i)
     {
-        std::vector<LexNParseToken> v = LexNParseTokenize(testcode[i], i);
+        std::vector<LexNParseToken> v;
+        LexNParseStatus status = LexNParseTokenize(v, testcode[i], i);
+        if (!status.complete)
+        {
+            std::cout << static_cast<int>(status.errorCode) << "\n";
+            std::cout << status.lineNumber << "\n";
+            std::cout << status.indexNumber << "\n";
+            exit(1);
+        }
         total_tk.insert(total_tk.end(), v.begin(), v.end());
         for (auto tk : v)
         {
@@ -155,8 +163,15 @@ int main()
 
 	std::cout << "\n\n";
 
-    ASTJsonNode* json_node = LexNParseParse(total_tk);
-    printObjNode(json_node->object, 0);
+    LexNParseResult result = LexNParseParse(total_tk);
+    if (!result.status.complete)
+    {
+        std::cout << static_cast<int>(result.status.errorCode) << "\n";
+        std::cout << result.status.lineNumber << "\n";
+        std::cout << result.status.indexNumber << "\n";
+        exit(1);
+    }
+    printObjNode(result.value->object, 0);
 
     return 0;
 }
