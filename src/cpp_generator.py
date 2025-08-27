@@ -93,12 +93,16 @@ class CppGenerator:
     def generate_hpp(self, src, dst):
         template = self.env.get_template(src)
 
-        token_symbols = []
-        for i, tk in enumerate(self.symbols):
-            if tk[0]:
-                continue
+        dfa_accept_states = self.lexer_dfa.get_accept_states(self.ambig_priority)
 
-            token_symbols.append(("__terminal__" if tk[1] == "$" else tk[1], i))
+        token_symbols = []
+        tokens = set([tk[1] for tk in dfa_accept_states])
+        tokens.add("__terminal__")
+
+        counter = 0
+        for i, tk in enumerate(tokens):
+            token_symbols.append((tk, i))
+            #token_symbols.append(("__terminal__" if tk == "$" else tk, i))
 
         start_grammar_dtype = self.grammar_info[self.start_grammar][2][1:-1].strip()
 
@@ -106,7 +110,7 @@ class CppGenerator:
             header=self.header,
             externs=self.externs,
             symbols=token_symbols,
-            symbols_count=len(self.symbols),
+            symbols_count=len(token_symbols),
             start_grammar_dtype=start_grammar_dtype,
             len=len
         )
