@@ -47,9 +47,8 @@ static std::string stringify(LexNParseToken tk)
     return std::to_string(tk.lineNumber) + ":" + std::to_string(tk.indexNumber) + " " + type + " : " + tk.token;
 }
 
-std::string testcode[17] = {
-    "{",
-    "    \"mynum\": 5",
+std::string testcode[16] = {
+    "{\"mynum\" : 5",
     "    \"mybool\": true",
     "    \"mystr\":  false",
     "    \"myarr\": [",
@@ -143,7 +142,7 @@ int main()
 {
     // requires preprocessing to ensure all tokens are displayable ascii [32-126]
     std::vector<LexNParseToken> total_tk;
-    for (int i=0;i<17;++i)
+    for (int i=0;i<16;++i)
     {
         std::vector<LexNParseToken> v;
         LexNParseStatus status = LexNParseTokenize(v, testcode[i], i);

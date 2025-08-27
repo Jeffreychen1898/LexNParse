@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <vector>
 #include <stack>
@@ -18,8 +19,9 @@ enum class LexNParseTokenType : uint32_t
 	obj_open = 13,
 	space = 14,
 	string = 15,
-	endline = 17,
-	__null__ = 16
+	test_tk = 16,
+	endline = 18,
+	__null__ = 17
 };
 
 enum class LexNParseErrorCode : uint8_t

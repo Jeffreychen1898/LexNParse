@@ -96,13 +96,15 @@ class CppGenerator:
         dfa_accept_states = self.lexer_dfa.get_accept_states(self.ambig_priority)
 
         token_symbols = []
-        tokens = set([tk[1] for tk in dfa_accept_states])
-        tokens.add("__terminal__")
+        tokens = self.symbols.copy()
+        tokens_set = set([tk[1] for tk in tokens if not tk[0]])
+        tokens += [(False, tk[1]) for tk in dfa_accept_states if tk[1] not in tokens_set]
 
-        counter = 0
         for i, tk in enumerate(tokens):
-            token_symbols.append((tk, i))
-            #token_symbols.append(("__terminal__" if tk == "$" else tk, i))
+            if tk[0]:
+                continue
+
+            token_symbols.append(("__terminal__" if tk[1] == "$" else tk[1], i))
 
         start_grammar_dtype = self.grammar_info[self.start_grammar][2][1:-1].strip()
 
@@ -110,7 +112,7 @@ class CppGenerator:
             header=self.header,
             externs=self.externs,
             symbols=token_symbols,
-            symbols_count=len(token_symbols),
+            symbols_count=len(tokens),
             start_grammar_dtype=start_grammar_dtype,
             len=len
         )

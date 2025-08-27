@@ -44,8 +44,10 @@ static {{ info[2][1:-1].strip() }} LexNParseResolve_{{ nonterminal }}(std::stack
 
 	for (uint32_t i=0;i<len;++i)
 	{
+{%- if info[3][0] > 0 %}
 		uint32_t symbol_index = len - i - 1;
         void* stack_value = parse_stack.top().value;
+{%- endif %}
         parse_stack.pop();
 
 {%- if info[3][0] > 0 %}

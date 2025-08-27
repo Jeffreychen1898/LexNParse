@@ -16,6 +16,8 @@ obj_close: "\}";
 colon: ":";
 space: " +";
 
+test_tk: "~+";
+
 __extern__ endline;
 __start__ JSON;
 
